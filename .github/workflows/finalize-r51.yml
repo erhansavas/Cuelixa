@@ -1,79 +1,87 @@
+# SPDX-License-Identifier: Apache-2.0
 name: Finalize exact R51 repository
 
 on:
-  pull_request:
+  push:
     branches: [main]
+    paths:
+      - '.finalize-r51-trigger'
 
 permissions:
   contents: write
 
 jobs:
   finalize:
-    if: github.event.pull_request.head.ref == 'bootstrap-r51'
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
     steps:
-      - name: Checkout main and fetch transfer branch
-        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+      - name: Checkout main
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           ref: main
           fetch-depth: 0
           persist-credentials: true
 
-      - name: Reconstruct exact R51 and finalize repository
+      - name: Restore, verify, freeze, and publish exact R51 tree
         shell: bash
         run: |
           set -euo pipefail
-          git fetch origin bootstrap-r51
-          rm -rf /tmp/r51-transfer /tmp/r51-extract /tmp/pro
-          mkdir -p /tmp/r51-transfer /tmp/r51-extract /tmp/pro
-          for p in $(git ls-tree -r --name-only origin/bootstrap-r51 .bootstrap | grep '^.bootstrap/source.b64.part' | sort); do
-            git show "origin/bootstrap-r51:$p"
-          done | base64 --decode > /tmp/cuelixa-r51-source.tar.gz
-          echo '6b49edda170b6a26290a7f8401a7e73d8f8829b5fa84ad30416c9786e7b9c246  /tmp/cuelixa-r51-source.tar.gz' | sha256sum -c -
-          tar -xzf /tmp/cuelixa-r51-source.tar.gz -C /tmp/r51-extract
-          R51="$(find /tmp/r51-extract -mindepth 1 -maxdepth 1 -type d -print -quit)"
-          test -n "$R51"
-          test "$(find "$R51" -type f | wc -l | tr -d ' ')" = 69
+          git fetch origin finalize-exact
+          rm -rf /tmp/r51-repair
+          mkdir -p /tmp/r51-repair
 
-          # Preserve only the reviewed public/release layer from main.
-          for p in README.md CHANGELOG.md CONTRIBUTING.md SECURITY.md .gitignore .gitattributes Scripts docs .github/CODEOWNERS .github/ISSUE_TEMPLATE .github/dependabot.yml .github/pull_request_template.md .github/workflows/macos.yml .github/workflows/release-dmg.yml; do
-            if [ -e "$p" ]; then
-              mkdir -p "/tmp/pro/$(dirname "$p")"
-              cp -a "$p" "/tmp/pro/$p"
-            fi
-          done
+          for p in p00 p01 p02 r00 r01 r02 r03 r04 r05; do
+            git show "origin/finalize-exact:.repair2/$p"
+          done | base64 --decode > /tmp/r51-repair/r51-missing.tar.xz
 
-          find . -mindepth 1 -maxdepth 1 ! -name .git -exec rm -rf {} +
-          cp -a "$R51"/. .
+          echo 'e9b5ad12c166a9752f6522bbd8c73b7b6d4bff85ceb33d05a9c0d608480f7c06  /tmp/r51-repair/r51-missing.tar.xz' | sha256sum -c -
+          mkdir -p /tmp/r51-repair/extract
+          tar -xJf /tmp/r51-repair/r51-missing.tar.xz -C /tmp/r51-repair/extract
 
-          # Clean public layout: retain qualified bytes, move internal evidence under docs/engineering.
+          test "$(find /tmp/r51-repair/extract -type f | wc -l | tr -d ' ')" = 13
+          cp -f /tmp/r51-repair/extract/CuelixaMac/AppModel.swift CuelixaMac/AppModel.swift
+          cp -f /tmp/r51-repair/extract/CuelixaMac/PlaybackController.swift CuelixaMac/PlaybackController.swift
+          cp -f /tmp/r51-repair/extract/CuelixaMac/Subtitle.swift CuelixaMac/Subtitle.swift
+          cp -f /tmp/r51-repair/extract/CuelixaMac/Assets.xcassets/AppIcon.appiconset/*.png CuelixaMac/Assets.xcassets/AppIcon.appiconset/
+          rm -f CuelixaMac/Assets.xcassets/AppIcon.appiconset/.placeholder CuelixaMac/Assets.xcassets/AppIcon.appiconset/.placeholder2
+
           mkdir -p docs/engineering
           for f in MAC-QUALIFICATION-CHECKLIST.md PORT-FIDELITY.md R51_ENGINEERING_REPORT.md R51_TEST_NOTES.md SOURCE-BASELINE.txt VALIDATION.md; do
-            if [ -f "$f" ]; then mv "$f" docs/engineering/; fi
+            if [ -f "$f" ]; then mv -f "$f" "docs/engineering/$f"; fi
           done
 
-          cp -a /tmp/pro/. .
-          rm -f .github/workflows/bootstrap-r51.yml .github/workflows/icons-bootstrap.yml .github/workflows/finalize-r51.yml
-          rm -rf .bootstrap .bootstrap-v2
+          test "$(git hash-object CuelixaMac/AppModel.swift)" = 63e2c43fb0120c596242f75a738f85d272c61f93
+          test "$(git hash-object CuelixaMac/PlaybackController.swift)" = e7b3f73be6779942d48072853a1cbc62171b8779
+          test "$(git hash-object CuelixaMac/Subtitle.swift)" = ce2099167df80af611ba980f02ed33fe2eeb6574
+          test "$(git hash-object CuelixaMac.xcodeproj/project.pbxproj)" = e6d8e69bd3a9ae9c20803eb18567c3e7a43112d0
 
-          # Qualified payload must still be exact R51 bytes.
-          for p in CuelixaMac CuelixaMac.xcodeproj Tests VALIDATE-MAC.sh LICENSE NOTICE THIRD_PARTY_NOTICES.md; do
-            diff -qr "$R51/$p" "$p"
-          done
+          test "$(git hash-object CuelixaMac/Assets.xcassets/AppIcon.appiconset/icon_16.png)" = 2b73b7e378afd7430c3646e684f4db5b73bd92a1
+          test "$(git hash-object CuelixaMac/Assets.xcassets/AppIcon.appiconset/icon_16@2x.png)" = 7182c7a201b96396f4d217c185ec068441d7e171
+          test "$(git hash-object CuelixaMac/Assets.xcassets/AppIcon.appiconset/icon_32.png)" = 7182c7a201b96396f4d217c185ec068441d7e171
+          test "$(git hash-object CuelixaMac/Assets.xcassets/AppIcon.appiconset/icon_32@2x.png)" = 558b68c392246003f63dba96b233eb04c55808db
+          test "$(git hash-object CuelixaMac/Assets.xcassets/AppIcon.appiconset/icon_128.png)" = 68f93ba6684dae44441db92f248cd014e43ae234
+          test "$(git hash-object CuelixaMac/Assets.xcassets/AppIcon.appiconset/icon_128@2x.png)" = 6d20b0ada809e4bb8e0a909e677b653acdd836a5
+          test "$(git hash-object CuelixaMac/Assets.xcassets/AppIcon.appiconset/icon_256.png)" = 6d20b0ada809e4bb8e0a909e677b653acdd836a5
+          test "$(git hash-object CuelixaMac/Assets.xcassets/AppIcon.appiconset/icon_256@2x.png)" = e2569425ca717b5c4e44618e1427a89c8fc2421c
+          test "$(git hash-object CuelixaMac/Assets.xcassets/AppIcon.appiconset/icon_512.png)" = e2569425ca717b5c4e44618e1427a89c8fc2421c
+          test "$(git hash-object CuelixaMac/Assets.xcassets/AppIcon.appiconset/icon_512@2x.png)" = 32b788bc8693c01be61ce7f36df8e7c312a18a3c
+          test "$(find CuelixaMac/Assets.xcassets/AppIcon.appiconset -maxdepth 1 -type f -name '*.png' | wc -l | tr -d ' ')" = 10
+          ! find CuelixaMac/Assets.xcassets/AppIcon.appiconset -name '.placeholder*' | grep -q .
 
-          # Freeze every final repository byte except the manifest itself.
+          grep -Fq 'MARKETING_VERSION = 0.6.65;' CuelixaMac.xcodeproj/project.pbxproj
+          grep -Fq 'CURRENT_PROJECT_VERSION = 51;' CuelixaMac.xcodeproj/project.pbxproj
+          grep -Fq 'PRODUCT_BUNDLE_IDENTIFIER = io.github.erhansavas.Cuelixa;' CuelixaMac.xcodeproj/project.pbxproj
+          grep -Fq 'ARCHS = arm64;' CuelixaMac.xcodeproj/project.pbxproj
+          grep -Fq 'SWIFT_STRICT_CONCURRENCY = complete;' CuelixaMac.xcodeproj/project.pbxproj
+          grep -Fq 'SWIFT_TREAT_WARNINGS_AS_ERRORS = YES;' CuelixaMac.xcodeproj/project.pbxproj
+          grep -Fq 'ENABLE_HARDENED_RUNTIME = YES;' CuelixaMac.xcodeproj/project.pbxproj
+          grep -Fq 'ENABLE_APP_SANDBOX = NO;' CuelixaMac.xcodeproj/project.pbxproj
+
+          rm -f .finalize-r51-trigger .github/workflows/finalize-r51.yml
           rm -f SOURCE-SHA256SUMS.txt
           find . -type f -not -path './.git/*' -not -name SOURCE-SHA256SUMS.txt -print0 | LC_ALL=C sort -z | xargs -0 shasum -a 256 > SOURCE-SHA256SUMS.txt
           shasum -a 256 -c SOURCE-SHA256SUMS.txt
-
-          test -f CuelixaMac.xcodeproj/project.pbxproj
-          test -f CuelixaMac/AppModel.swift
-          test -f CuelixaMac/PlaybackController.swift
-          test -f CuelixaMac/Subtitle.swift
-          test "$(find CuelixaMac/Assets.xcassets/AppIcon.appiconset -maxdepth 1 -name '*.png' -type f | wc -l | tr -d ' ')" = 10
-          ! find CuelixaMac/Assets.xcassets/AppIcon.appiconset -name '.placeholder*' | grep -q .
-          grep -Fq 'MARKETING_VERSION = 0.6.65;' CuelixaMac.xcodeproj/project.pbxproj
-          grep -Fq 'CURRENT_PROJECT_VERSION = 51;' CuelixaMac.xcodeproj/project.pbxproj
+          test "$(find . -type f -not -path './.git/*' | wc -l | tr -d ' ')" = 74
 
           git add -A
           git config user.name 'github-actions[bot]'
