@@ -30,9 +30,10 @@ jobs:
           git fetch origin finalize-exact
           rm -rf /tmp/r51-repair
           mkdir -p /tmp/r51-repair/extract
+          : > /tmp/r51-repair/r51-missing.tar.xz
           for p in p00 p01 p02 r00 r01 r02 r03 r04 r05; do
-            git show "origin/finalize-exact:.repair2/$p"
-          done | tr -cd 'A-Za-z0-9+/=' | base64 --decode > /tmp/r51-repair/r51-missing.tar.xz
+            git show "origin/finalize-exact:.repair2/$p" | tr -cd 'A-Za-z0-9+/=' | base64 --decode >> /tmp/r51-repair/r51-missing.tar.xz
+          done
           echo 'e9b5ad12c166a9752f6522bbd8c73b7b6d4bff85ceb33d05a9c0d608480f7c06  /tmp/r51-repair/r51-missing.tar.xz' | sha256sum -c -
           tar -xJf /tmp/r51-repair/r51-missing.tar.xz -C /tmp/r51-repair/extract
           test "$(find /tmp/r51-repair/extract -type f | wc -l | tr -d ' ')" = 13
