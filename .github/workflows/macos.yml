@@ -1,0 +1,44 @@
+# SPDX-License-Identifier: Apache-2.0
+name: macOS CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+permissions:
+  contents: read
+
+jobs:
+  macos-arm64-release:
+    name: macos-arm64-release
+    runs-on: macos-26
+    timeout-minutes: 30
+    env:
+      DEVELOPER_DIR: /Applications/Xcode_26.6.app/Contents/Developer
+      CUELIXA_CI_MODE: '1'
+    steps:
+      - name: Checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Verify repository SHA-256 manifest
+        shell: bash
+        run: shasum -a 256 -c SOURCE-SHA256SUMS.txt
+
+      - name: Verify runner and stable toolchain
+        shell: bash
+        run: |
+          set -euo pipefail
+          test "$(uname -m)" = "arm64"
+          sw_vers
+          xcodebuild -version
+          xcrun swiftc --version
+          xcodebuild -version | grep -Fx 'Xcode 26.6'
+          xcodebuild -version | grep -Fx 'Build version 17F113'
+
+      - name: Clean Release validation
+        shell: bash
+        run: ./VALIDATE-MAC.sh

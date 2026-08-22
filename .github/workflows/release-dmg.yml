@@ -1,0 +1,126 @@
+# SPDX-License-Identifier: Apache-2.0
+name: Build free macOS DMG
+
+on:
+  workflow_dispatch:
+  push:
+    tags:
+      - 'v*'
+
+permissions:
+  contents: write
+
+jobs:
+  release-dmg:
+    runs-on: macos-26
+    timeout-minutes: 35
+    env:
+      DEVELOPER_DIR: /Applications/Xcode_26.6.app/Contents/Developer
+      VERSION: '0.6.65'
+      BUILD: '51'
+      DMG: 'Cuelixa-0.6.65-macOS-arm64.dmg'
+    steps:
+      - name: Checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+          fetch-depth: 0
+
+      - name: Verify source integrity and toolchain
+        shell: bash
+        run: |
+          set -euo pipefail
+          shasum -a 256 -c SOURCE-SHA256SUMS.txt
+          test "$(uname -m)" = arm64
+          xcodebuild -version | grep -Fx 'Xcode 26.6'
+          xcodebuild -version | grep -Fx 'Build version 17F113'
+          grep -Fq 'MARKETING_VERSION = 0.6.65;' CuelixaMac.xcodeproj/project.pbxproj
+          grep -Fq 'CURRENT_PROJECT_VERSION = 51;' CuelixaMac.xcodeproj/project.pbxproj
+          grep -Fq 'MACOSX_DEPLOYMENT_TARGET = 26.0;' CuelixaMac.xcodeproj/project.pbxproj
+
+      - name: CI qualification gate
+        shell: bash
+        env:
+          CUELIXA_CI_MODE: '1'
+        run: ./VALIDATE-MAC.sh
+
+      - name: Build Release app
+        shell: bash
+        run: |
+          set -euo pipefail
+          rm -rf DerivedData dist stage
+          xcodebuild \
+            -project CuelixaMac.xcodeproj \
+            -scheme Cuelixa \
+            -configuration Release \
+            -derivedDataPath DerivedData \
+            -destination 'platform=macOS,arch=arm64' \
+            CODE_SIGNING_ALLOWED=NO \
+            build
+          APP='DerivedData/Build/Products/Release/Cuelixa.app'
+          test -d "$APP"
+          test "$(/usr/libexec/PlistBuddy -c 'Print :CFBundleShortVersionString' "$APP/Contents/Info.plist")" = "$VERSION"
+          test "$(/usr/libexec/PlistBuddy -c 'Print :CFBundleVersion' "$APP/Contents/Info.plist")" = "$BUILD"
+          test "$(lipo -archs "$APP/Contents/MacOS/Cuelixa")" = arm64
+
+      - name: Ad-hoc sign and verify
+        shell: bash
+        run: |
+          set -euo pipefail
+          APP='DerivedData/Build/Products/Release/Cuelixa.app'
+          codesign --force --sign - --options runtime "$APP"
+          codesign --verify --deep --strict --verbose=2 "$APP"
+          codesign -d --verbose=4 "$APP" 2>&1 | grep -F 'Signature=adhoc'
+          ! codesign -d --entitlements :- "$APP" 2>/dev/null | grep -q 'get-task-allow'
+
+      - name: Create and verify read-only DMG
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p stage dist
+          cp -R 'DerivedData/Build/Products/Release/Cuelixa.app' stage/
+          ln -s /Applications stage/Applications
+          hdiutil create -quiet -volname Cuelixa -srcfolder stage -format UDZO -ov "dist/$DMG"
+          hdiutil verify "dist/$DMG"
+          MOUNT="$(mktemp -d /tmp/cuelixa-mount.XXXXXX)"
+          DEV="$(hdiutil attach -readonly -nobrowse -mountpoint "$MOUNT" "dist/$DMG" | awk '/Apple_HFS|Apple_APFS/ {print $1; exit}')"
+          trap 'hdiutil detach "$DEV" >/dev/null 2>&1 || true; rmdir "$MOUNT" 2>/dev/null || true' EXIT
+          test -d "$MOUNT/Cuelixa.app"
+          test -L "$MOUNT/Applications"
+          test "$(lipo -archs "$MOUNT/Cuelixa.app/Contents/MacOS/Cuelixa")" = arm64
+          codesign --verify --deep --strict --verbose=2 "$MOUNT/Cuelixa.app"
+          hdiutil detach "$DEV"
+          rmdir "$MOUNT"
+          trap - EXIT
+
+      - name: Freeze SHA-256
+        shell: bash
+        run: |
+          set -euo pipefail
+          cd dist
+          shasum -a 256 "$DMG" > "$DMG.sha256"
+          shasum -a 256 -c "$DMG.sha256"
+
+      - name: Upload workflow artifact
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        with:
+          name: Cuelixa-${{ env.VERSION }}-macOS-arm64
+          path: |
+            dist/${{ env.DMG }}
+            dist/${{ env.DMG }}.sha256
+          if-no-files-found: error
+          retention-days: 30
+
+      - name: Publish GitHub Release for matching tag
+        if: startsWith(github.ref, 'refs/tags/v')
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          test "${GITHUB_REF_NAME}" = "v${VERSION}"
+          gh release create "$GITHUB_REF_NAME" \
+            "dist/$DMG" "dist/$DMG.sha256" \
+            --title "Cuelixa $VERSION" \
+            --notes-file CHANGELOG.md \
+            --verify-tag

@@ -1,0 +1,22 @@
+# macOS
+.DS_Store
+
+# Xcode local state
+DerivedData/
+build/
+*.xcuserstate
+*.xcscmblueprint
+xcuserdata/
+*.xccheckout
+
+# SwiftPM local state (if tooling is added later)
+.build/
+.swiftpm/
+
+# Local qualification output
+*.xcresult
+*.log
+Cuelixa-*.zip
+Cuelixa-*-SHA256.txt
+*.dmg
+*.dmg.sha256

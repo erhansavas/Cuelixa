@@ -1,0 +1,5 @@
+Cuelixa native macOS source baseline
+Marketing version: 0.6.65
+Engineering revision/build: 51
+Target qualification environment: macOS 26.6.2 / Xcode 26.6 (17F113) / Swift 6.3.3 / Apple Silicon arm64
+License: Apache-2.0
