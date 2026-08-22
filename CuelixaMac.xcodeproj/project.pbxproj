@@ -1,0 +1,129 @@
+// !$*UTF8*$!
+{
+	archiveVersion = 1;
+	classes = {};
+	objectVersion = 77;
+	objects = {
+/* Begin PBXBuildFile section */
+		A1B2C3D4E5F60718293A4B5C /* SubtitleOverlay.swift in Sources */ = {isa = PBXBuildFile; fileRef = B1C2D3E4F5061728394A5B6C /* SubtitleOverlay.swift */; };
+		F6B5F45FFF55524ACEAAED39 /* AppModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6FC0A0AA26B095D01079FAE2 /* AppModel.swift */; };
+		74DEC197FFA0CCB17E72FC2F /* AppPaths.swift in Sources */ = {isa = PBXBuildFile; fileRef = 975BF69C7944E06D1E359AE7 /* AppPaths.swift */; };
+		5769DADD7B3BC2A4B5FAE2DB /* CuelixaApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5B9E1046134CAEF04FAEA92E /* CuelixaApp.swift */; };
+		4257FAF75B12412C509E5231 /* Database.swift in Sources */ = {isa = PBXBuildFile; fileRef = F5D3898397A816D0ED3A3266 /* Database.swift */; };
+		0E82DBB9AA15037B7895F1C6 /* Design.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7BFC85AB89462BC2D13BE166 /* Design.swift */; };
+		F64406E5EDFCB3B67FB5F809 /* Dialogs.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5DB100D1D32EDB542EFC7DB3 /* Dialogs.swift */; };
+		18BC13D1CACC1BF26DD9D86B /* HotKeyManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8B73CEF15F27ABDB668A11D2 /* HotKeyManager.swift */; };
+		C32EF0E3568508AE620BDF1A /* LibraryScanner.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6AA3CC2154C08A937013AE62 /* LibraryScanner.swift */; };
+		6D5BF30BAFEFEB3149EB7B94 /* MainView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 71045E7B42D0EFCF5F9463E2 /* MainView.swift */; };
+		C28E3B592A560C32484F497E /* Models.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1B0C8FAFE1B09544C5912233 /* Models.swift */; };
+		E4F9D0254F964A0A6ACE34E5 /* NativeTranscriber.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8AE64DEE70F75F1B81933EFF /* NativeTranscriber.swift */; };
+		B83C201C79F8240BBCBB539B /* PlaybackController.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1AD979C7D195CEDB1E23A407 /* PlaybackController.swift */; };
+		77403339D2925F211857A46D /* PlayerPanel.swift in Sources */ = {isa = PBXBuildFile; fileRef = 557D0A8FFD09181E8E533161 /* PlayerPanel.swift */; };
+		16CB6631EBACE037A3C10625 /* Subtitle.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6F1A1CB61DAC148044C2FFA6 /* Subtitle.swift */; };
+		2DBF635C9E89D39DF5B716AE /* TranscriptCache.swift in Sources */ = {isa = PBXBuildFile; fileRef = 900021011BD2E6182DB6AEAA /* TranscriptCache.swift */; };
+		59F7A9042EB6837B8DF57D6C /* Utilities.swift in Sources */ = {isa = PBXBuildFile; fileRef = 047985C71AEB2DD0DE048BED /* Utilities.swift */; };
+		222F0DBFFE5EB23DCD3FD16F /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = 5B04B2273026590A440D27C9 /* Assets.xcassets */; };
+		7A1C4E90123456789ABCDEF0 /* PrivacyInfo.xcprivacy in Resources */ = {isa = PBXBuildFile; fileRef = 7A1C4E90123456789ABCDEE0 /* PrivacyInfo.xcprivacy */; };
+/* End PBXBuildFile section */
+
+/* Begin PBXFileReference section */
+		B1C2D3E4F5061728394A5B6C /* SubtitleOverlay.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SubtitleOverlay.swift; sourceTree = "<group>"; };
+		6FC0A0AA26B095D01079FAE2 /* AppModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppModel.swift; sourceTree = "<group>"; };
+		975BF69C7944E06D1E359AE7 /* AppPaths.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppPaths.swift; sourceTree = "<group>"; };
+		5B9E1046134CAEF04FAEA92E /* CuelixaApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CuelixaApp.swift; sourceTree = "<group>"; };
+		F5D3898397A816D0ED3A3266 /* Database.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Database.swift; sourceTree = "<group>"; };
+		7BFC85AB89462BC2D13BE166 /* Design.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Design.swift; sourceTree = "<group>"; };
+		5DB100D1D32EDB542EFC7DB3 /* Dialogs.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Dialogs.swift; sourceTree = "<group>"; };
+		8B73CEF15F27ABDB668A11D2 /* HotKeyManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HotKeyManager.swift; sourceTree = "<group>"; };
+		6AA3CC2154C08A937013AE62 /* LibraryScanner.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LibraryScanner.swift; sourceTree = "<group>"; };
+		71045E7B42D0EFCF5F9463E2 /* MainView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MainView.swift; sourceTree = "<group>"; };
+		1B0C8FAFE1B09544C5912233 /* Models.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Models.swift; sourceTree = "<group>"; };
+		8AE64DEE70F75F1B81933EFF /* NativeTranscriber.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NativeTranscriber.swift; sourceTree = "<group>"; };
+		1AD979C7D195CEDB1E23A407 /* PlaybackController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PlaybackController.swift; sourceTree = "<group>"; };
+		557D0A8FFD09181E8E533161 /* PlayerPanel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PlayerPanel.swift; sourceTree = "<group>"; };
+		6F1A1CB61DAC148044C2FFA6 /* Subtitle.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Subtitle.swift; sourceTree = "<group>"; };
+		900021011BD2E6182DB6AEAA /* TranscriptCache.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TranscriptCache.swift; sourceTree = "<group>"; };
+		047985C71AEB2DD0DE048BED /* Utilities.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Utilities.swift; sourceTree = "<group>"; };
+		5B04B2273026590A440D27C9 /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
+		7A1C4E90123456789ABCDEE0 /* PrivacyInfo.xcprivacy */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = PrivacyInfo.xcprivacy; sourceTree = "<group>"; };
+		38A007151ABE87CC01A5B6E9 /* Cuelixa.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = Cuelixa.app; sourceTree = BUILT_PRODUCTS_DIR; };
+/* End PBXFileReference section */
+
+/* Begin PBXFrameworksBuildPhase section */
+		7561BFB015D8F536760CB671 /* Frameworks */ = {isa = PBXFrameworksBuildPhase; buildActionMask = 2147483647; files = (); runOnlyForDeploymentPostprocessing = 0; };
+/* End PBXFrameworksBuildPhase section */
+
+/* Begin PBXGroup section */
+		DC76E9F0C0006E8F919E0C51 = {isa = PBXGroup; children = (64292B1C2B2E13EAD8788FC8 /* CuelixaMac */, 4FCFB17C3E55E8A168D5907F /* Products */,); sourceTree = "<group>"; };
+		64292B1C2B2E13EAD8788FC8 /* CuelixaMac */ = {isa = PBXGroup; children = (
+			6FC0A0AA26B095D01079FAE2 /* AppModel.swift */,
+			975BF69C7944E06D1E359AE7 /* AppPaths.swift */,
+			5B9E1046134CAEF04FAEA92E /* CuelixaApp.swift */,
+			F5D3898397A816D0ED3A3266 /* Database.swift */,
+			7BFC85AB89462BC2D13BE166 /* Design.swift */,
+			5DB100D1D32EDB542EFC7DB3 /* Dialogs.swift */,
+			8B73CEF15F27ABDB668A11D2 /* HotKeyManager.swift */,
+			6AA3CC2154C08A937013AE62 /* LibraryScanner.swift */,
+			71045E7B42D0EFCF5F9463E2 /* MainView.swift */,
+			1B0C8FAFE1B09544C5912233 /* Models.swift */,
+			8AE64DEE70F75F1B81933EFF /* NativeTranscriber.swift */,
+			1AD979C7D195CEDB1E23A407 /* PlaybackController.swift */,
+			557D0A8FFD09181E8E533161 /* PlayerPanel.swift */,
+			6F1A1CB61DAC148044C2FFA6 /* Subtitle.swift */,
+			B1C2D3E4F5061728394A5B6C /* SubtitleOverlay.swift */,
+			900021011BD2E6182DB6AEAA /* TranscriptCache.swift */,
+			047985C71AEB2DD0DE048BED /* Utilities.swift */,
+			5B04B2273026590A440D27C9 /* Assets.xcassets */,
+			7A1C4E90123456789ABCDEE0 /* PrivacyInfo.xcprivacy */,
+		); path = CuelixaMac; sourceTree = "<group>"; };
+		4FCFB17C3E55E8A168D5907F /* Products */ = {isa = PBXGroup; children = (38A007151ABE87CC01A5B6E9 /* Cuelixa.app */,); name = Products; sourceTree = "<group>"; };
+/* End PBXGroup section */
+
+/* Begin PBXNativeTarget section */
+		0E8A3AD980EC179856012B7E /* Cuelixa */ = {isa = PBXNativeTarget; buildConfigurationList = CA1DA61B2057B9BC70BD3866; buildPhases = (BCE16DD0260827ECF338C787, 7561BFB015D8F536760CB671, 0189424A5A60FED329FA868E); buildRules = (); dependencies = (); name = Cuelixa; productName = Cuelixa; productReference = 38A007151ABE87CC01A5B6E9; productType = "com.apple.product-type.application"; };
+/* End PBXNativeTarget section */
+
+/* Begin PBXProject section */
+		98F54143AB4E86B28C3AFEE0 /* Project object */ = {isa = PBXProject; attributes = {BuildIndependentTargetsInParallel = 1; LastSwiftUpdateCheck = 2660; LastUpgradeCheck = 2660; TargetAttributes = {0E8A3AD980EC179856012B7E = {CreatedOnToolsVersion = 26.6; }; }; }; buildConfigurationList = F142A019F36D348128455B0A; compatibilityVersion = "Xcode 16.0"; developmentRegion = en; hasScannedForEncodings = 0; knownRegions = (en, Base); mainGroup = DC76E9F0C0006E8F919E0C51; productRefGroup = 4FCFB17C3E55E8A168D5907F; projectDirPath = ""; projectRoot = ""; targets = (0E8A3AD980EC179856012B7E); };
+/* End PBXProject section */
+
+/* Begin PBXResourcesBuildPhase section */
+		0189424A5A60FED329FA868E /* Resources */ = {isa = PBXResourcesBuildPhase; buildActionMask = 2147483647; files = (222F0DBFFE5EB23DCD3FD16F /* Assets.xcassets in Resources */, 7A1C4E90123456789ABCDEF0 /* PrivacyInfo.xcprivacy in Resources */,); runOnlyForDeploymentPostprocessing = 0; };
+/* End PBXResourcesBuildPhase section */
+
+/* Begin PBXSourcesBuildPhase section */
+		BCE16DD0260827ECF338C787 /* Sources */ = {isa = PBXSourcesBuildPhase; buildActionMask = 2147483647; files = (
+			F6B5F45FFF55524ACEAAED39 /* AppModel.swift in Sources */,
+			74DEC197FFA0CCB17E72FC2F /* AppPaths.swift in Sources */,
+			5769DADD7B3BC2A4B5FAE2DB /* CuelixaApp.swift in Sources */,
+			4257FAF75B12412C509E5231 /* Database.swift in Sources */,
+			0E82DBB9AA15037B7895F1C6 /* Design.swift in Sources */,
+			F64406E5EDFCB3B67FB5F809 /* Dialogs.swift in Sources */,
+			18BC13D1CACC1BF26DD9D86B /* HotKeyManager.swift in Sources */,
+			C32EF0E3568508AE620BDF1A /* LibraryScanner.swift in Sources */,
+			6D5BF30BAFEFEB3149EB7B94 /* MainView.swift in Sources */,
+			C28E3B592A560C32484F497E /* Models.swift in Sources */,
+			E4F9D0254F964A0A6ACE34E5 /* NativeTranscriber.swift in Sources */,
+			B83C201C79F8240BBCBB539B /* PlaybackController.swift in Sources */,
+			77403339D2925F211857A46D /* PlayerPanel.swift in Sources */,
+			16CB6631EBACE037A3C10625 /* Subtitle.swift in Sources */,
+			A1B2C3D4E5F60718293A4B5C /* SubtitleOverlay.swift in Sources */,
+			2DBF635C9E89D39DF5B716AE /* TranscriptCache.swift in Sources */,
+			59F7A9042EB6837B8DF57D6C /* Utilities.swift in Sources */,
+		); runOnlyForDeploymentPostprocessing = 0; };
+/* End PBXSourcesBuildPhase section */
+
+/* Begin XCBuildConfiguration section */
+		B05BEBB064D0A38CFA49E7B1 /* Debug */ = {isa = XCBuildConfiguration; buildSettings = {CLANG_ENABLE_MODULES = YES; MACOSX_DEPLOYMENT_TARGET = 26.0; SDKROOT = macosx; SWIFT_VERSION = 6.0; }; name = Debug; };
+		8C8F75B80E1CEC91DA7341A3 /* Release */ = {isa = XCBuildConfiguration; buildSettings = {CLANG_ENABLE_MODULES = YES; MACOSX_DEPLOYMENT_TARGET = 26.0; SDKROOT = macosx; SWIFT_VERSION = 6.0; }; name = Release; };
+		258A38BC256D3BE0936BEE7F /* Debug */ = {isa = XCBuildConfiguration; buildSettings = {ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon; ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor; CODE_SIGN_STYLE = Automatic; CURRENT_PROJECT_VERSION = 51; ENABLE_APP_SANDBOX = NO; ENABLE_HARDENED_RUNTIME = YES; GENERATE_INFOPLIST_FILE = YES; INFOPLIST_KEY_CFBundleDisplayName = Cuelixa; INFOPLIST_KEY_LSApplicationCategoryType = "public.app-category.education"; INFOPLIST_KEY_NSHumanReadableCopyright = "Copyright 2026 erhansavas."; INFOPLIST_KEY_NSSpeechRecognitionUsageDescription = "Cuelixa transcribes lesson audio into local subtitles on this Mac."; MARKETING_VERSION = 0.6.65; PRODUCT_BUNDLE_IDENTIFIER = io.github.erhansavas.Cuelixa; PRODUCT_NAME = Cuelixa; ARCHS = arm64; ONLY_ACTIVE_ARCH = YES; SUPPORTED_PLATFORMS = macosx; SWIFT_EMIT_LOC_STRINGS = YES; SWIFT_STRICT_CONCURRENCY = complete; SWIFT_TREAT_WARNINGS_AS_ERRORS = YES; SWIFT_OPTIMIZATION_LEVEL = "-Onone";}; name = Debug; };
+		AF08645F33FB7E7450F93573 /* Release */ = {isa = XCBuildConfiguration; buildSettings = {ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon; ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor; CODE_SIGN_STYLE = Automatic; CURRENT_PROJECT_VERSION = 51; ENABLE_APP_SANDBOX = NO; ENABLE_HARDENED_RUNTIME = YES; GENERATE_INFOPLIST_FILE = YES; INFOPLIST_KEY_CFBundleDisplayName = Cuelixa; INFOPLIST_KEY_LSApplicationCategoryType = "public.app-category.education"; INFOPLIST_KEY_NSHumanReadableCopyright = "Copyright 2026 erhansavas."; INFOPLIST_KEY_NSSpeechRecognitionUsageDescription = "Cuelixa transcribes lesson audio into local subtitles on this Mac."; MARKETING_VERSION = 0.6.65; PRODUCT_BUNDLE_IDENTIFIER = io.github.erhansavas.Cuelixa; PRODUCT_NAME = Cuelixa; ARCHS = arm64; ONLY_ACTIVE_ARCH = NO; SUPPORTED_PLATFORMS = macosx; DEAD_CODE_STRIPPING = YES; SWIFT_COMPILATION_MODE = wholemodule; SWIFT_EMIT_LOC_STRINGS = YES; SWIFT_STRICT_CONCURRENCY = complete; SWIFT_TREAT_WARNINGS_AS_ERRORS = YES; SWIFT_OPTIMIZATION_LEVEL = "-O";}; name = Release; };
+/* End XCBuildConfiguration section */
+
+/* Begin XCConfigurationList section */
+		F142A019F36D348128455B0A = {isa = XCConfigurationList; buildConfigurations = (B05BEBB064D0A38CFA49E7B1, 8C8F75B80E1CEC91DA7341A3); defaultConfigurationIsVisible = 0; defaultConfigurationName = Release; };
+		CA1DA61B2057B9BC70BD3866 = {isa = XCConfigurationList; buildConfigurations = (258A38BC256D3BE0936BEE7F, AF08645F33FB7E7450F93573); defaultConfigurationIsVisible = 0; defaultConfigurationName = Release; };
+/* End XCConfigurationList section */
+	};
+	rootObject = 98F54143AB4E86B28C3AFEE0 /* Project object */;
+}
