@@ -12,24 +12,21 @@ permissions:
 
 jobs:
   repair-exact-r51:
-    if: github.event_name == 'push'
+    if: github.event_name == 'pull_request' && github.head_ref == 'one-shot-r51-trigger'
     runs-on: ubuntu-24.04
     timeout-minutes: 10
     steps:
-      - name: Checkout
+      - name: Checkout main
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
+          ref: main
           fetch-depth: 0
           persist-credentials: true
 
-      - name: Restore exact qualified R51 bytes when armed
+      - name: Restore exact qualified R51 bytes
         shell: bash
         run: |
           set -euo pipefail
-          if [ ! -f .direct-r51-trigger ]; then
-            echo 'R51 repair not armed; no-op.'
-            exit 0
-          fi
           git fetch origin finalize-exact
           rm -rf /tmp/r51-repair
           mkdir -p /tmp/r51-repair/extract
@@ -61,12 +58,14 @@ jobs:
           test "$(git hash-object CuelixaMac/Assets.xcassets/AppIcon.appiconset/icon_512.png)" = e2569425ca717b5c4e44618e1427a89c8fc2421c
           test "$(git hash-object CuelixaMac/Assets.xcassets/AppIcon.appiconset/icon_512@2x.png)" = 32b788bc8693c01be61ce7f36df8e7c312a18a3c
           test "$(find CuelixaMac/Assets.xcassets/AppIcon.appiconset -maxdepth 1 -type f -name '*.png' | wc -l | tr -d ' ')" = 10
+          ! find CuelixaMac/Assets.xcassets/AppIcon.appiconset -name '.placeholder*' | grep -q .
 
           mkdir -p docs/engineering
           for f in MAC-QUALIFICATION-CHECKLIST.md PORT-FIDELITY.md R51_ENGINEERING_REPORT.md R51_TEST_NOTES.md SOURCE-BASELINE.txt VALIDATION.md; do
             if [ -f "$f" ]; then mv -f "$f" "docs/engineering/$f"; fi
           done
-          rm -f .direct-r51-trigger .finalize-r51-trigger
+
+          rm -f .direct-r51-trigger .finalize-r51-trigger _probe.txt
           rm -f .github/workflows/finalize-r51.yml .github/workflows/one-shot-finalize.yml
           rm -f SOURCE-SHA256SUMS.txt
           find . -type f -not -path './.git/*' -not -name SOURCE-SHA256SUMS.txt -print0 | LC_ALL=C sort -z | xargs -0 shasum -a 256 | sed 's#  \./#  #' > SOURCE-SHA256SUMS.txt
