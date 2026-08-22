@@ -1,0 +1,18 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1024" height="1024" viewBox="0 0 1024 1024">
+  <defs>
+    <linearGradient id="canvas" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#272C36"/>
+      <stop offset="1" stop-color="#161A21"/>
+    </linearGradient>
+  </defs>
+
+  <!-- Dark-mode-oriented app canvas -->
+  <rect x="52" y="52" width="920" height="920" rx="205" fill="url(#canvas)"/>
+  <rect x="60" y="60" width="904" height="904" rx="197"
+        fill="none" stroke="#FFFFFF" stroke-opacity="0.055" stroke-width="4"/>
+
+  <!-- Timed-caption mark: one caption line + one active cue segment and its continuation -->
+  <rect x="216" y="332" width="592" height="100" rx="50" fill="#F4F0E8"/>
+  <rect x="216" y="528" width="200" height="100" rx="50" fill="#FF645A"/>
+  <rect x="452" y="528" width="356" height="100" rx="50" fill="#D8D0C4"/>
+</svg>
