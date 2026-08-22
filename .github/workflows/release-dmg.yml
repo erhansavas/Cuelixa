@@ -79,7 +79,7 @@ jobs:
           codesign --verify --deep --strict --verbose=2 "$app"
           signature=$(codesign -d --verbose=4 "$app" 2>&1)
           printf '%s\n' "$signature" | grep -F 'Signature=adhoc'
-          printf '%s\n' "$signature" | grep -F 'flags=0x10000(runtime)'
+          printf '%s\n' "$signature" | grep -Eq 'flags=0x[0-9a-fA-F]+\([^)]*runtime[^)]*\)'
           entitlements="$work_root/entitlements.plist"
           codesign -d --entitlements :- "$app" > "$entitlements" 2>/dev/null || true
           ! grep -q 'get-task-allow' "$entitlements"
