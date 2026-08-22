@@ -2,16 +2,16 @@
 name: One-shot exact R51 repair
 
 on:
-  pull_request_target:
-    types: [opened, synchronize]
+  push:
     branches: [main]
+    paths:
+      - '.direct-r51-trigger'
 
 permissions:
   contents: write
 
 jobs:
   repair:
-    if: github.event.pull_request.head.ref == 'one-shot-r51-trigger'
     runs-on: ubuntu-24.04
     timeout-minutes: 10
     steps:
@@ -29,11 +29,9 @@ jobs:
           git fetch origin finalize-exact
           rm -rf /tmp/r51-repair
           mkdir -p /tmp/r51-repair/extract
-
           for p in p00 p01 p02 r00 r01 r02 r03 r04 r05; do
             git show "origin/finalize-exact:.repair2/$p"
           done | base64 --decode > /tmp/r51-repair/r51-missing.tar.xz
-
           echo 'e9b5ad12c166a9752f6522bbd8c73b7b6d4bff85ceb33d05a9c0d608480f7c06  /tmp/r51-repair/r51-missing.tar.xz' | sha256sum -c -
           tar -xJf /tmp/r51-repair/r51-missing.tar.xz -C /tmp/r51-repair/extract
           test "$(find /tmp/r51-repair/extract -type f | wc -l | tr -d ' ')" = 13
@@ -65,8 +63,7 @@ jobs:
           for f in MAC-QUALIFICATION-CHECKLIST.md PORT-FIDELITY.md R51_ENGINEERING_REPORT.md R51_TEST_NOTES.md SOURCE-BASELINE.txt VALIDATION.md; do
             if [ -f "$f" ]; then mv -f "$f" "docs/engineering/$f"; fi
           done
-
-          rm -f .finalize-r51-trigger
+          rm -f .direct-r51-trigger .finalize-r51-trigger
           rm -f .github/workflows/finalize-r51.yml .github/workflows/one-shot-finalize.yml
           rm -f SOURCE-SHA256SUMS.txt
           find . -type f -not -path './.git/*' -not -name SOURCE-SHA256SUMS.txt -print0 | LC_ALL=C sort -z | xargs -0 shasum -a 256 | sed 's#  \./#  #' > SOURCE-SHA256SUMS.txt
