@@ -1,5 +1,7 @@
 # Build and development
 
+These instructions apply to Cuelixa 0.6.65.
+
 ## Requirements
 
 - Apple silicon Mac
