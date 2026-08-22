@@ -3,6 +3,7 @@
   <h1>Cuelixa</h1>
   <p><strong>Local-first listening practice for Apple silicon Macs.</strong></p>
   <p>Play local lesson audio, resume where you left off, create synchronized subtitles on-device, and keep them visible in a compact floating overlay while you work.</p>
+  <p><strong>Current release: Cuelixa 0.6.65</strong></p>
 </div>
 
 ## Screenshots
