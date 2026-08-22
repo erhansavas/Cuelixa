@@ -1,0 +1,82 @@
+name: Finalize exact R51 repository
+
+on:
+  pull_request:
+    branches: [main]
+
+permissions:
+  contents: write
+
+jobs:
+  finalize:
+    if: github.event.pull_request.head.ref == 'bootstrap-r51'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout main and fetch transfer branch
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          ref: main
+          fetch-depth: 0
+          persist-credentials: true
+
+      - name: Reconstruct exact R51 and finalize repository
+        shell: bash
+        run: |
+          set -euo pipefail
+          git fetch origin bootstrap-r51
+          rm -rf /tmp/r51-transfer /tmp/r51-extract /tmp/pro
+          mkdir -p /tmp/r51-transfer /tmp/r51-extract /tmp/pro
+          for p in $(git ls-tree -r --name-only origin/bootstrap-r51 .bootstrap | grep '^.bootstrap/source.b64.part' | sort); do
+            git show "origin/bootstrap-r51:$p"
+          done | base64 --decode > /tmp/cuelixa-r51-source.tar.gz
+          echo '6b49edda170b6a26290a7f8401a7e73d8f8829b5fa84ad30416c9786e7b9c246  /tmp/cuelixa-r51-source.tar.gz' | sha256sum -c -
+          tar -xzf /tmp/cuelixa-r51-source.tar.gz -C /tmp/r51-extract
+          R51="$(find /tmp/r51-extract -mindepth 1 -maxdepth 1 -type d -print -quit)"
+          test -n "$R51"
+          test "$(find "$R51" -type f | wc -l | tr -d ' ')" = 69
+
+          # Preserve only the reviewed public/release layer from main.
+          for p in README.md CHANGELOG.md CONTRIBUTING.md SECURITY.md .gitignore .gitattributes Scripts docs .github/CODEOWNERS .github/ISSUE_TEMPLATE .github/dependabot.yml .github/pull_request_template.md .github/workflows/macos.yml .github/workflows/release-dmg.yml; do
+            if [ -e "$p" ]; then
+              mkdir -p "/tmp/pro/$(dirname "$p")"
+              cp -a "$p" "/tmp/pro/$p"
+            fi
+          done
+
+          find . -mindepth 1 -maxdepth 1 ! -name .git -exec rm -rf {} +
+          cp -a "$R51"/. .
+
+          # Clean public layout: retain qualified bytes, move internal evidence under docs/engineering.
+          mkdir -p docs/engineering
+          for f in MAC-QUALIFICATION-CHECKLIST.md PORT-FIDELITY.md R51_ENGINEERING_REPORT.md R51_TEST_NOTES.md SOURCE-BASELINE.txt VALIDATION.md; do
+            if [ -f "$f" ]; then mv "$f" docs/engineering/; fi
+          done
+
+          cp -a /tmp/pro/. .
+          rm -f .github/workflows/bootstrap-r51.yml .github/workflows/icons-bootstrap.yml .github/workflows/finalize-r51.yml
+          rm -rf .bootstrap .bootstrap-v2
+
+          # Qualified payload must still be exact R51 bytes.
+          for p in CuelixaMac CuelixaMac.xcodeproj Tests VALIDATE-MAC.sh LICENSE NOTICE THIRD_PARTY_NOTICES.md; do
+            diff -qr "$R51/$p" "$p"
+          done
+
+          # Freeze every final repository byte except the manifest itself.
+          rm -f SOURCE-SHA256SUMS.txt
+          find . -type f -not -path './.git/*' -not -name SOURCE-SHA256SUMS.txt -print0 | LC_ALL=C sort -z | xargs -0 shasum -a 256 > SOURCE-SHA256SUMS.txt
+          shasum -a 256 -c SOURCE-SHA256SUMS.txt
+
+          test -f CuelixaMac.xcodeproj/project.pbxproj
+          test -f CuelixaMac/AppModel.swift
+          test -f CuelixaMac/PlaybackController.swift
+          test -f CuelixaMac/Subtitle.swift
+          test "$(find CuelixaMac/Assets.xcassets/AppIcon.appiconset -maxdepth 1 -name '*.png' -type f | wc -l | tr -d ' ')" = 10
+          ! find CuelixaMac/Assets.xcassets/AppIcon.appiconset -name '.placeholder*' | grep -q .
+          grep -Fq 'MARKETING_VERSION = 0.6.65;' CuelixaMac.xcodeproj/project.pbxproj
+          grep -Fq 'CURRENT_PROJECT_VERSION = 51;' CuelixaMac.xcodeproj/project.pbxproj
+
+          git add -A
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git commit -m 'Finalize exact Cuelixa 0.6.65 R51 repository'
+          git push origin HEAD:main
