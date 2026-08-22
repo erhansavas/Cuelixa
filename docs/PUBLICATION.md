@@ -14,6 +14,7 @@ The internal engineering identifier remains `0.6.65-r51` / build `51`, but engin
 ## Mandatory publication gates
 
 - exact-target `VALIDATE-MAC.sh` pass;
+- complete tracked-path and digest verification through `Scripts/verify-source-manifest.sh`;
 - manual runtime regression pass;
 - accessibility pass;
 - Time Profiler / thermal evidence without a Cuelixa runaway pattern;

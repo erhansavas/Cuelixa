@@ -5,15 +5,22 @@ on:
   workflow_dispatch:
   push:
     tags:
-      - 'v*'
+      - 'v0.6.65'
 
 permissions:
-  contents: write
+  contents: read
+
+concurrency:
+  group: release-${{ github.ref }}
+  cancel-in-progress: false
 
 jobs:
   release-dmg:
+    name: release-macos-arm64-dmg
     runs-on: macos-26
-    timeout-minutes: 35
+    timeout-minutes: 40
+    permissions:
+      contents: write
     env:
       DEVELOPER_DIR: /Applications/Xcode_26.6.app/Contents/Developer
       VERSION: '0.6.65'
@@ -26,74 +33,83 @@ jobs:
           persist-credentials: false
           fetch-depth: 0
 
-      - name: Verify source integrity and toolchain
+      - name: Verify source integrity and release identity
         shell: bash
         run: |
           set -euo pipefail
-          shasum -a 256 -c SOURCE-SHA256SUMS.txt
+          ./Scripts/verify-source-manifest.sh
           test "$(uname -m)" = arm64
           xcodebuild -version | grep -Fx 'Xcode 26.6'
           xcodebuild -version | grep -Fx 'Build version 17F113'
           grep -Fq 'MARKETING_VERSION = 0.6.65;' CuelixaMac.xcodeproj/project.pbxproj
           grep -Fq 'CURRENT_PROJECT_VERSION = 51;' CuelixaMac.xcodeproj/project.pbxproj
           grep -Fq 'MACOSX_DEPLOYMENT_TARGET = 26.0;' CuelixaMac.xcodeproj/project.pbxproj
+          if [ "${GITHUB_REF_TYPE:-}" = tag ]; then
+            test "${GITHUB_REF_NAME}" = "v${VERSION}"
+          fi
 
-      - name: CI qualification gate
+      - name: Run CI qualification gate
         shell: bash
         env:
           CUELIXA_CI_MODE: '1'
         run: ./VALIDATE-MAC.sh
 
-      - name: Build Release app
+      - name: Build, ad-hoc sign, and verify app
         shell: bash
         run: |
           set -euo pipefail
-          rm -rf DerivedData dist stage
+          work_root=$(mktemp -d "${RUNNER_TEMP}/cuelixa-release.XXXXXX")
+          echo "CUELIXA_RELEASE_ROOT=$work_root" >> "$GITHUB_ENV"
+          derived_data="$work_root/DerivedData"
           xcodebuild \
             -project CuelixaMac.xcodeproj \
             -scheme Cuelixa \
             -configuration Release \
-            -derivedDataPath DerivedData \
+            -derivedDataPath "$derived_data" \
             -destination 'platform=macOS,arch=arm64' \
             CODE_SIGNING_ALLOWED=NO \
             build
-          APP='DerivedData/Build/Products/Release/Cuelixa.app'
-          test -d "$APP"
-          test "$(/usr/libexec/PlistBuddy -c 'Print :CFBundleShortVersionString' "$APP/Contents/Info.plist")" = "$VERSION"
-          test "$(/usr/libexec/PlistBuddy -c 'Print :CFBundleVersion' "$APP/Contents/Info.plist")" = "$BUILD"
-          test "$(lipo -archs "$APP/Contents/MacOS/Cuelixa")" = arm64
-
-      - name: Ad-hoc sign and verify
-        shell: bash
-        run: |
-          set -euo pipefail
-          APP='DerivedData/Build/Products/Release/Cuelixa.app'
-          codesign --force --sign - --options runtime "$APP"
-          codesign --verify --deep --strict --verbose=2 "$APP"
-          codesign -d --verbose=4 "$APP" 2>&1 | grep -F 'Signature=adhoc'
-          ! codesign -d --entitlements :- "$APP" 2>/dev/null | grep -q 'get-task-allow'
+          app="$derived_data/Build/Products/Release/Cuelixa.app"
+          test -d "$app"
+          test "$(/usr/libexec/PlistBuddy -c 'Print :CFBundleShortVersionString' "$app/Contents/Info.plist")" = "$VERSION"
+          test "$(/usr/libexec/PlistBuddy -c 'Print :CFBundleVersion' "$app/Contents/Info.plist")" = "$BUILD"
+          test "$(/usr/libexec/PlistBuddy -c 'Print :CFBundleIdentifier' "$app/Contents/Info.plist")" = io.github.erhansavas.Cuelixa
+          test "$(lipo -archs "$app/Contents/MacOS/Cuelixa")" = arm64
+          codesign --force --sign - --timestamp=none --options runtime "$app"
+          codesign --verify --deep --strict --verbose=2 "$app"
+          signature=$(codesign -d --verbose=4 "$app" 2>&1)
+          printf '%s\n' "$signature" | grep -F 'Signature=adhoc'
+          printf '%s\n' "$signature" | grep -F 'flags=0x10000(runtime)'
+          entitlements="$work_root/entitlements.plist"
+          codesign -d --entitlements :- "$app" > "$entitlements" 2>/dev/null || true
+          ! grep -q 'get-task-allow' "$entitlements"
 
       - name: Create and verify read-only DMG
         shell: bash
         run: |
           set -euo pipefail
-          mkdir -p stage dist
-          cp -R 'DerivedData/Build/Products/Release/Cuelixa.app' stage/
-          ln -s /Applications stage/Applications
-          hdiutil create -quiet -volname Cuelixa -srcfolder stage -format UDZO -ov "dist/$DMG"
+          app="$CUELIXA_RELEASE_ROOT/DerivedData/Build/Products/Release/Cuelixa.app"
+          stage="$CUELIXA_RELEASE_ROOT/stage"
+          mount_point="$CUELIXA_RELEASE_ROOT/mount"
+          mkdir -p "$stage" "$mount_point" dist
+          ditto "$app" "$stage/Cuelixa.app"
+          ln -s /Applications "$stage/Applications"
+          hdiutil create -quiet -volname Cuelixa -srcfolder "$stage" -format UDZO -ov "dist/$DMG"
           hdiutil verify "dist/$DMG"
-          MOUNT="$(mktemp -d /tmp/cuelixa-mount.XXXXXX)"
-          DEV="$(hdiutil attach -readonly -nobrowse -mountpoint "$MOUNT" "dist/$DMG" | awk '/Apple_HFS|Apple_APFS/ {print $1; exit}')"
-          trap 'hdiutil detach "$DEV" >/dev/null 2>&1 || true; rmdir "$MOUNT" 2>/dev/null || true' EXIT
-          test -d "$MOUNT/Cuelixa.app"
-          test -L "$MOUNT/Applications"
-          test "$(lipo -archs "$MOUNT/Cuelixa.app/Contents/MacOS/Cuelixa")" = arm64
-          codesign --verify --deep --strict --verbose=2 "$MOUNT/Cuelixa.app"
-          hdiutil detach "$DEV"
-          rmdir "$MOUNT"
+          attach_output=$(hdiutil attach -readonly -nobrowse -mountpoint "$mount_point" "dist/$DMG")
+          device=$(printf '%s\n' "$attach_output" | awk '/Apple_HFS|Apple_APFS/ {print $1; exit}')
+          test -n "$device"
+          trap 'hdiutil detach "$device" >/dev/null 2>&1 || true' EXIT
+          mounted_app="$mount_point/Cuelixa.app"
+          test -d "$mounted_app"
+          test -L "$mount_point/Applications"
+          test "$(lipo -archs "$mounted_app/Contents/MacOS/Cuelixa")" = arm64
+          test "$(/usr/libexec/PlistBuddy -c 'Print :CFBundleIdentifier' "$mounted_app/Contents/Info.plist")" = io.github.erhansavas.Cuelixa
+          codesign --verify --deep --strict --verbose=2 "$mounted_app"
+          hdiutil detach "$device"
           trap - EXIT
 
-      - name: Freeze SHA-256
+      - name: Freeze and verify DMG SHA-256
         shell: bash
         run: |
           set -euo pipefail
@@ -102,7 +118,7 @@ jobs:
           shasum -a 256 -c "$DMG.sha256"
 
       - name: Upload workflow artifact
-        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         with:
           name: Cuelixa-${{ env.VERSION }}-macOS-arm64
           path: |
@@ -111,15 +127,15 @@ jobs:
           if-no-files-found: error
           retention-days: 30
 
-      - name: Publish GitHub Release for matching tag
-        if: startsWith(github.ref, 'refs/tags/v')
+      - name: Publish matching GitHub Release
+        if: github.ref_type == 'tag'
         shell: bash
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
           set -euo pipefail
           test "${GITHUB_REF_NAME}" = "v${VERSION}"
-          gh release create "$GITHUB_REF_NAME" \
+          gh release create "${GITHUB_REF_NAME}" \
             "dist/$DMG" "dist/$DMG.sha256" \
             --title "Cuelixa $VERSION" \
             --notes-file CHANGELOG.md \

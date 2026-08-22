@@ -3,7 +3,7 @@
 Apply these settings only after the repository exists publicly:
 
 - Protect the default branch with a ruleset.
-- Require the `macos-arm64-release` status check before merge.
+- Require the `macos-arm64-release` status check before merge; it includes the fail-closed source-manifest gate.
 - Require pull requests and dismiss stale approvals when high-risk code changes warrant review.
 - Block force pushes and deletion of the protected default branch.
 - Restrict GitHub Actions to required actions/workflows and require full-length SHA pinning when practical.

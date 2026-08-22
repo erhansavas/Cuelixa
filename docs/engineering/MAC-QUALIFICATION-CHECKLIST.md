@@ -117,4 +117,4 @@ Target: Apple Silicon, macOS 26.6.2, Xcode 26.6 (17F113), Swift 6.3.3.
 
 - [ ] Apache-2.0/license/provenance files are complete for the exact distributed tree.
 - [ ] Release archive contains no DerivedData, build products, user media, xcuserdata, `.DS_Store`, or accidental secrets.
-- [ ] Developer ID signing/notarization is completed and inspected before a public binary release.
+- [ ] The public DMG's ad-hoc signature, Hardened Runtime flag, arm64 binary, mounted contents, and SHA-256 file are verified; no Developer ID/notarization claim is made.

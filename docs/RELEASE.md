@@ -19,7 +19,7 @@ Engineering labels such as `r51`, `native`, and `candidate` do not belong in pub
 2. Verify `MARKETING_VERSION = 0.6.65`, `CURRENT_PROJECT_VERSION = 51`, deployment target `26.0`, and `arm64` architecture.
 3. Run `./VALIDATE-MAC.sh` on the exact target Mac for authoritative qualification. CI is an additional regression gate, not a replacement for that evidence.
 4. Require clean Debug, Release, Analyze, smoke tests, Swift strict-concurrency checks, and warnings-as-errors.
-5. Reconfirm the manual runtime, accessibility, performance/thermal, and memory/leak evidence recorded in `VALIDATION.md` and `R51_TEST_NOTES.md`.
+5. Reconfirm the manual runtime, accessibility, performance/thermal, and memory/leak evidence recorded in `docs/QUALIFICATION.md` and `docs/engineering/R51_TEST_NOTES.md`.
 6. Build Release for Apple silicon with Hardened Runtime enabled.
 7. Apply an ad-hoc code signature and verify it with `codesign --verify --deep --strict`.
 8. Create a read-only UDZO DMG containing `Cuelixa.app` and an `Applications` symlink.

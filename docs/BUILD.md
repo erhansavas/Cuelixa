@@ -24,4 +24,12 @@ GitHub CI runs on the `macos-26` arm64 image and pins `DEVELOPER_DIR` to `/Appli
 
 ## Runtime qualification
 
-Use `MAC-QUALIFICATION-CHECKLIST.md` and `R51_TEST_NOTES.md` on the exact packaged bytes. Performance, energy, memory, accessibility, and visual claims must come from the target candidate, not from CI or Linux host checks.
+Use `docs/engineering/MAC-QUALIFICATION-CHECKLIST.md` and `docs/engineering/R51_TEST_NOTES.md` on the exact packaged bytes. Performance, energy, memory, accessibility, and visual claims must come from the target candidate, not from CI or Linux host checks.
+
+## Source integrity
+
+`SOURCE-SHA256SUMS.txt` covers every tracked release-tree file except the manifest itself. Verify both the path set and file digests with:
+
+```sh
+./Scripts/verify-source-manifest.sh
+```

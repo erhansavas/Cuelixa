@@ -15,7 +15,7 @@
 
 ## Install
 
-The end-user package is **`Cuelixa-0.6.65-macOS-arm64.dmg`** from GitHub Releases.
+When a public release is available, download **`Cuelixa-0.6.65-macOS-arm64.dmg`** from GitHub Releases.
 
 1. Open the DMG.
 2. Drag **Cuelixa** to **Applications**.

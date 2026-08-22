@@ -27,6 +27,9 @@ final class SubtitleOverlayController: NSObject {
     override func viewDidMoveToWindow() {
       super.viewDidMoveToWindow()
       guard window != nil, tracking == nil else { return }
+      // `.inVisibleRect` keeps the tracking region synchronized with the view
+      // without mutating tracking areas from AppKit's layout/updateTrackingAreas
+      // callback. This avoids a custom layout-time mutation on the overlay path.
       let area = NSTrackingArea(
         rect: .zero,
         options: [.activeAlways, .inVisibleRect, .mouseEnteredAndExited, .mouseMoved],
