@@ -1,5 +1,5 @@
 <div align="center">
-  <img src="CuelixaMac/Assets.xcassets/AppIcon.appiconset/icon_256@2x.png" width="128" height="128" alt="Cuelixa app icon">
+  <img src="docs/assets/cuelixa-icon.svg" width="148" height="148" alt="Cuelixa app icon">
   <h1>Cuelixa</h1>
   <p><strong>Local-first listening practice for Apple silicon Macs.</strong></p>
   <p>Play local lesson audio, resume where you left off, generate synchronized subtitles on-device, and keep subtitles in a compact floating overlay while you work in other apps.</p>
@@ -58,6 +58,18 @@ Open `CuelixaMac.xcodeproj`, select **Cuelixa / My Mac**, and build. The canonic
 ```
 
 See [Build](docs/BUILD.md) and [Qualification](docs/QUALIFICATION.md).
+
+## Artwork
+
+The repository includes the original first-party vector master at [`docs/assets/cuelixa-icon.svg`](docs/assets/cuelixa-icon.svg). The qualified macOS `AppIcon.appiconset` remains the frozen raster shipping set used by R51.
+
+The SVG master has SHA-256:
+
+```text
+cf456e5ee218e1db4b439b2110d992edec90546d1163e7c2f0a8de1a54d5539d
+```
+
+See [App icon provenance](docs/APP-ICON-PROVENANCE.md).
 
 ## Privacy and security
 
