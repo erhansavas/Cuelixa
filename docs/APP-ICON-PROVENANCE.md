@@ -14,7 +14,7 @@ Its SHA-256 is:
 
 That checksum matches the earlier Cuelixa artwork integrity manifest retained with the project history. The same SVG source is present in the accepted Cuelixa 0.6.57 final-icon installer history and contains the established timed-caption mark using the canonical Cuelixa coral `#FF645A`.
 
-The SVG is retained as provenance/design-source material. The qualified R51 macOS application continues to ship the already-qualified raster AppIcon set; publication work does not silently regenerate or substitute those shipping icon bytes.
+The SVG is retained as provenance/design-source material. The released macOS application continues to ship the already-qualified raster AppIcon set; publication work does not silently regenerate or substitute those shipping icon bytes.
 
 ## Established from the distributed assets
 
@@ -22,8 +22,9 @@ The SVG is retained as provenance/design-source material. The qualified R51 macO
 - The qualified macOS application adds no Apple artwork and ships no extracted SF Symbol artwork.
 - Pixel inspection of the approved 1024 px raster identifies its dominant exact coral payload as sRGB `#FF645A` (`255, 100, 90`).
 - The qualified macOS application uses that value only as Cuelixa's restrained semantic identity accent.
-- The qualified macOS application does not redraw, recolor, or otherwise mutate the frozen R51 raster icon set during repository/publication preparation.
+- The qualified macOS application does not redraw, recolor, or otherwise mutate the frozen raster icon set during repository/publication preparation.
 
 ## Publication presentation
 
 README/project presentation should reference the vector master so the project icon remains reliably visible on GitHub without depending on the binary AppIcon transfer path. The AppIcon asset catalog remains the authoritative shipping resource used by Xcode.
+

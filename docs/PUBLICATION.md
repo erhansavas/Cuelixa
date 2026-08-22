@@ -2,31 +2,28 @@
 
 ## Scope
 
-This repository publishes source code and may publish a free macOS Apple-silicon DMG through GitHub Releases. No paid Apple Developer Program membership is required by the project release process.
+This repository publishes the Cuelixa source code and a free macOS Apple-silicon DMG through GitHub Releases.
 
-## Public artifact names
+## Public artifacts
 
 - `Cuelixa-0.6.65-macOS-arm64.dmg`
 - `Cuelixa-0.6.65-macOS-arm64.dmg.sha256`
 
-The internal engineering identifier remains `0.6.65-r51` / build `51`, but engineering labels are not exposed in public artifact names.
+## Publication gates
 
-## Mandatory publication gates
-
-- exact-target `VALIDATE-MAC.sh` pass;
-- complete tracked-path and digest verification through `Scripts/verify-source-manifest.sh`;
-- manual runtime regression pass;
-- accessibility pass;
-- Time Profiler / thermal evidence without a Cuelixa runaway pattern;
-- Allocations/Leaks evidence without a Cuelixa-owned leak;
-- release bundle is `arm64` and version/build metadata match;
-- ad-hoc code signature verifies;
+- supported local build and test sequence passes;
+- GitHub CI passes;
+- complete tracked-path and source-digest verification passes;
+- manual runtime and accessibility checks pass;
+- performance, thermal, and memory inspection shows no application-owned runaway or leak;
+- release bundle is `arm64` and its version/build metadata match;
+- ad-hoc code signature verifies with Hardened Runtime;
 - read-only DMG verifies and remounts successfully;
 - final DMG SHA-256 is generated and verified after packaging;
-- `LICENSE`, `NOTICE`, `THIRD_PARTY_NOTICES.md`, privacy/security documentation, and release notes match the published source revision.
+- license, notices, privacy/security documentation, and release notes match the published source revision.
 
-## Security posture for free distribution
+## Free-distribution security posture
 
-The release must never tell users to disable Gatekeeper, disable SIP, or clear quarantine with Terminal commands. If macOS blocks first launch because the build is not Developer-ID notarized, document only Apple's normal **Privacy & Security → Open Anyway** approval flow.
+The release must never ask users to disable Gatekeeper or SIP or clear quarantine through Terminal. If macOS blocks first launch because the build is not Developer ID notarized, documentation must use the standard **Privacy & Security → Open Anyway** approval flow.
 
-Do not describe an ad-hoc signature as developer authentication, notarization, or Apple trust. It only gives the bundle a consistent code-signing seal.
+An ad-hoc signature is not developer authentication or notarization; it provides only a consistent code-signing seal for the packaged application.

@@ -365,12 +365,10 @@ if grep -R --line-number --fixed-strings 'NSColor(srgbWhite:' CuelixaMac >/dev/n
 fi
 pass 'APPKIT_COLOR_API_GUARD'
 
-# Current-release documentation must describe the exact candidate being validated.
-grep -Fq '0.6.65-r51' README.md || fail 'README revision is stale'
-grep -Fq '0.6.65-r51' docs/BUILD.md || fail 'BUILD documentation revision is stale'
-grep -Fq '0.6.65-r51' docs/engineering/MAC-QUALIFICATION-CHECKLIST.md || fail 'qualification checklist revision is stale'
-grep -Fq '0.6.65-r51' docs/QUALIFICATION.md || fail 'qualification documentation revision is stale'
-grep -Fq 'Engineering revision/build: 51' docs/engineering/SOURCE-BASELINE.txt || fail 'SOURCE-BASELINE build is stale'
+# Current-release documentation must match the public version.
+grep -Fq 'Cuelixa 0.6.65' README.md || fail 'README version is stale'
+grep -Fq '0.6.65' docs/BUILD.md || fail 'BUILD documentation version is stale'
+grep -Fq '0.6.65' docs/QUALIFICATION.md || fail 'testing documentation version is stale'
 pass 'CURRENT_DOCUMENTATION_SYNC'
 grep -Fq 'Reset Prepared Subtitles…' CuelixaMac/MainView.swift || fail 'subtitle reset toolbar action missing'
 grep -Fq 'resetManagedTranscripts' CuelixaMac/TranscriptCache.swift || fail 'managed subtitle reset implementation missing'
@@ -388,3 +386,4 @@ if [[ "$ci_mode" == "1" ]]; then
 else
   print 'VALIDATION PASSED — EXACT TARGET XCODE DEBUG + RELEASE + ANALYZE + SDK SMOKES'
 fi
+

@@ -1,10 +1,10 @@
-# Cuelixa 0.6.65-r51 — Target-Mac qualification checklist
+# Cuelixa 0.6.65 — macOS testing checklist
 
 Target: Apple Silicon, macOS 26.6.2, Xcode 26.6 (17F113), Swift 6.3.3.
 
 ## Compiler / project
 
-- [ ] Freshly extract the exact R51 candidate and verify its SHA-256.
+- [ ] Verify the source and release-package SHA-256 values.
 - [ ] Product → Clean Build Folder.
 - [ ] Debug build: 0 errors, 0 warnings.
 - [ ] Release build: 0 errors, 0 warnings.
@@ -118,3 +118,4 @@ Target: Apple Silicon, macOS 26.6.2, Xcode 26.6 (17F113), Swift 6.3.3.
 - [ ] Apache-2.0/license/provenance files are complete for the exact distributed tree.
 - [ ] Release archive contains no DerivedData, build products, user media, xcuserdata, `.DS_Store`, or accidental secrets.
 - [ ] The public DMG's ad-hoc signature, Hardened Runtime flag, arm64 binary, mounted contents, and SHA-256 file are verified; no Developer ID/notarization claim is made.
+

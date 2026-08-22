@@ -43,6 +43,7 @@ jobs:
           xcodebuild -version | grep -Fx 'Xcode 26.6'
           xcodebuild -version | grep -Fx 'Build version 17F113'
 
-      - name: Validate R51 application contract
+      - name: Validate application
         shell: bash
         run: ./VALIDATE-MAC.sh
+
