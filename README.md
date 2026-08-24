@@ -19,7 +19,7 @@
 </p>
 
 <p align="center">
-  <img src="docs/screenshots/cuelixa-local-transcription.png" alt="Cuelixa creating synchronized subtitles locally" width="100%">
+  <img src="docs/screenshots/cuelixa-local-transcription-0.6.66.png" alt="Cuelixa creating synchronized subtitles locally" width="100%">
   <br>
   <sub>Create synchronized subtitles locally</sub>
 </p>
