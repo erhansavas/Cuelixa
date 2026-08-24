@@ -136,9 +136,11 @@ struct LibraryPathTests {
     defer { try? FileManager.default.removeItem(at: home) }
     let legacy = home.appendingPathComponent("podcast", isDirectory: true)
     try FileManager.default.createDirectory(at: legacy, withIntermediateDirectories: true)
-    try FileManager.default.setAttributes([.posixPermissions: 0o400], atPath: legacy.path)
+    try FileManager.default.setAttributes(
+      [.posixPermissions: 0o400], ofItemAtPath: legacy.path)
     defer {
-      try? FileManager.default.setAttributes([.posixPermissions: 0o700], atPath: legacy.path)
+      try? FileManager.default.setAttributes(
+        [.posixPermissions: 0o700], ofItemAtPath: legacy.path)
     }
     let directories = AppDirectories.resolve(home: home)
     #expect(directories.library != legacy)
@@ -161,10 +163,10 @@ struct LibraryPathTests {
     let directories = AppDirectories.isolated(root: root)
     try directories.ensure()
     try FileManager.default.setAttributes(
-      [.posixPermissions: 0o500], atPath: directories.library.path)
+      [.posixPermissions: 0o500], ofItemAtPath: directories.library.path)
     defer {
       try? FileManager.default.setAttributes(
-        [.posixPermissions: 0o700], atPath: directories.library.path)
+        [.posixPermissions: 0o700], ofItemAtPath: directories.library.path)
     }
     #expect(throws: Error.self) { try directories.ensure() }
   }
@@ -404,12 +406,16 @@ struct TranscriptionQueueTests {
       executor: executor)
     var firstResult: Result<URL, Error>?
     var secondResult: Result<URL, Error>?
-    let firstToken = try #require(
-      transcriber.request(
-        track: track, progress: { _, _ in }, completion: { firstResult = $0 }))
-    _ = try #require(
-      transcriber.request(
-        track: track, progress: { _, _ in }, completion: { secondResult = $0 }))
+    guard
+      let firstToken = transcriber.request(
+        track: track, progress: { _, _ in }, completion: { firstResult = $0 })
+    else {
+      Issue.record("First watcher token was not created")
+      return
+    }
+    let secondToken = transcriber.request(
+      track: track, progress: { _, _ in }, completion: { secondResult = $0 })
+    #expect(secondToken != nil)
 
     try await waitUntil { transcriber.currentHash == hash }
     #expect(transcriber.cancel(hash: hash, token: firstToken))
@@ -449,8 +455,13 @@ struct TranscriptionQueueTests {
       cache: TranscriptCache(directories: directories), stagingDirectory: directories.staging,
       executor: executor)
     var result: Result<URL, Error>?
-    let token = try #require(
-      transcriber.request(track: track, progress: { _, _ in }, completion: { result = $0 }))
+    guard
+      let token = transcriber.request(
+        track: track, progress: { _, _ in }, completion: { result = $0 })
+    else {
+      Issue.record("Watcher token was not created")
+      return
+    }
     try await waitUntil { transcriber.currentHash == hash }
     #expect(transcriber.cancel(hash: hash, token: token))
     await transcriber.cancelAllAndWait()
