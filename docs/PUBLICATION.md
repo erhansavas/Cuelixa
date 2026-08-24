@@ -6,8 +6,8 @@ This repository publishes the Cuelixa source code and a free macOS Apple-silicon
 
 ## Public artifacts
 
-- `Cuelixa-0.6.65-macOS-arm64.dmg`
-- `Cuelixa-0.6.65-macOS-arm64.dmg.sha256`
+- `Cuelixa-0.6.66-macOS-arm64.dmg`
+- `Cuelixa-0.6.66-macOS-arm64.dmg.sha256`
 
 ## Publication gates
 

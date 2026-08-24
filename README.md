@@ -3,7 +3,7 @@
   <h1>Cuelixa</h1>
   <p><strong>Local-first listening practice for Apple silicon Macs.</strong></p>
   <p>Play local lesson audio, resume where you left off, create synchronized subtitles on-device, and keep them visible in a compact floating overlay while you work.</p>
-  <p><strong>Current release: Cuelixa 0.6.65 · Development: Cuelixa 0.6.66</strong></p>
+  <p><strong>Current version: Cuelixa 0.6.66 (build 52)</strong></p>
 </div>
 
 ## Screenshots
@@ -12,22 +12,23 @@
   <img src="docs/screenshots/cuelixa-library.png" alt="Cuelixa lesson library in dark mode" width="100%">
 </p>
 
-<table>
-  <tr>
-    <td width="50%"><img src="docs/screenshots/cuelixa-subtitle-options.png" alt="Subtitle preparation options"></td>
-    <td width="50%"><img src="docs/screenshots/cuelixa-local-transcription.png" alt="On-device subtitle preparation"></td>
-  </tr>
-  <tr>
-    <td align="center"><sub>Choose how to start a lesson</sub></td>
-    <td align="center"><sub>Create synchronized subtitles locally</sub></td>
-  </tr>
-  <tr>
-    <td colspan="2"><img src="docs/screenshots/cuelixa-playback-overlay.png" alt="Cuelixa subtitle-first playback overlay"></td>
-  </tr>
-  <tr>
-    <td colspan="2" align="center"><sub>Keep synchronized subtitles visible while you work</sub></td>
-  </tr>
-</table>
+<p align="center">
+  <img src="docs/screenshots/cuelixa-subtitle-options.png" alt="Cuelixa subtitle preparation options" width="100%">
+  <br>
+  <sub>Choose how to start a lesson</sub>
+</p>
+
+<p align="center">
+  <img src="docs/screenshots/cuelixa-local-transcription.png" alt="Cuelixa creating synchronized subtitles locally" width="100%">
+  <br>
+  <sub>Create synchronized subtitles locally</sub>
+</p>
+
+<p align="center">
+  <img src="docs/screenshots/cuelixa-playback-overlay.png" alt="Cuelixa subtitle-first playback overlay" width="100%">
+  <br>
+  <sub>Keep synchronized subtitles visible while you work</sub>
+</p>
 
 ## Highlights
 
@@ -39,7 +40,7 @@
 
 ## Install
 
-Download **`Cuelixa-0.6.65-macOS-arm64.dmg`** from the [latest release](https://github.com/erhansavas/Cuelixa/releases/latest).
+Cuelixa 0.6.66 is the current source version. When its downloadable build is published, obtain **`Cuelixa-0.6.66-macOS-arm64.dmg`** from [GitHub Releases](https://github.com/erhansavas/Cuelixa/releases) and verify that the app reports build 52. Older release assets remain historical and do not represent the current source tree.
 
 1. Open the DMG.
 2. Drag **Cuelixa** to **Applications**.
@@ -67,7 +68,7 @@ Same-basename `.srt` sidecars remain usable in place. Cuelixa does not rename so
 
 ## Build and test
 
-The current release uses Xcode 26.6 (`17F113`), Swift 6.3.3, macOS 26, and Apple silicon. Open `CuelixaMac.xcodeproj`, select **Cuelixa / My Mac**, and build.
+Cuelixa 0.6.66 uses Xcode 26.6 (`17F113`), Swift 6.3.3, macOS 26, and Apple silicon. Open `CuelixaMac.xcodeproj`, select **Cuelixa / My Mac**, and build.
 
 The full local test sequence is available through:
 

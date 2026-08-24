@@ -1,6 +1,6 @@
 # Changelog
 
-## 0.6.66 — development
+## 0.6.66
 
 - Validate the legacy library root before selecting it and isolate filesystem paths per process.
 - Serialize imports, verify copied bytes, prevent destination races, and surface per-file failures.

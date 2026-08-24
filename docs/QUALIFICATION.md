@@ -1,4 +1,4 @@
-# Testing status — 0.6.66 development
+# Testing status — Cuelixa 0.6.66 (build 52)
 
 The unchanged R51 product baseline was previously tested on:
 
