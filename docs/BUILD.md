@@ -1,6 +1,6 @@
 # Build and development
 
-These instructions apply to Cuelixa 0.6.65.
+These instructions apply to Cuelixa 0.6.66 development.
 
 ## Requirements
 
@@ -33,7 +33,7 @@ GitHub CI runs the same source-integrity and application checks on an Apple-sili
 
 ## Source integrity
 
-`SOURCE-SHA256SUMS.txt` covers every tracked file except the manifest itself. Verify both the tracked path set and file digests with:
+`SOURCE-SHA256SUMS.txt` covers every tracked file except itself and detects accidental tree drift. It is stored with the source, so it is not an independent trust root. Verify both the path set and file digests with:
 
 ```sh
 ./Scripts/verify-source-manifest.sh
