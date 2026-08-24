@@ -6,7 +6,7 @@ Cuelixa's public GitHub build is distributed without a paid Apple Developer ID c
 
 - Release title, tag, package name and checksum are derived from the Xcode project's marketing version.
 - The application build is derived from `CURRENT_PROJECT_VERSION`.
-- For this development revision the intended identity is `0.6.66` / build `52`.
+- The release identity is `0.6.66` / build `52`.
 
 ## Release checks
 
