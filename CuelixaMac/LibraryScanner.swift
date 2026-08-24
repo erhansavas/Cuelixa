@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: Apache-2.0
 import CoreServices
 import Foundation
+import OSLog
 
 /// A compact, Sendable summary of one FSEvents callback. Cuelixa performs a
 /// bounded full reconciliation for every delivered hierarchy change, while
@@ -15,12 +16,18 @@ struct LibraryChangeEvent: Sendable {
 /// changed, not receive one wakeup per filesystem operation.
 @MainActor
 final class LibraryChangeMonitor {
+  private let logger = Logger(subsystem: "io.github.erhansavas.Cuelixa", category: "Library")
+  private let root: URL
   private let onChange: @MainActor (LibraryChangeEvent) -> Void
   private let eventQueue = DispatchQueue(
     label: "io.github.erhansavas.Cuelixa.library-events", qos: .utility)
   private var stream: FSEventStreamRef?
 
-  init(onChange: @escaping @MainActor (LibraryChangeEvent) -> Void) {
+  init(
+    root: URL = AppPaths.current.library,
+    onChange: @escaping @MainActor (LibraryChangeEvent) -> Void
+  ) {
+    self.root = root
     self.onChange = onChange
   }
 
@@ -58,13 +65,13 @@ final class LibraryChangeMonitor {
 
     let flags = FSEventStreamCreateFlags(
       UInt32(kFSEventStreamCreateFlagWatchRoot) | UInt32(kFSEventStreamCreateFlagIgnoreSelf))
-    let paths = [AppPaths.library.path] as CFArray
+    let paths = [root.path] as CFArray
     guard
       let stream = FSEventStreamCreate(
         nil, callback, &context, paths, FSEventStreamEventId(kFSEventStreamEventIdSinceNow), 2.0,
         flags)
     else {
-      NSLog("Cuelixa: could not create library FSEvents stream; using fallback scan timer")
+      logger.error("Could not create FSEvents stream; using fallback scan timer")
       return false
     }
 
@@ -74,7 +81,7 @@ final class LibraryChangeMonitor {
       FSEventStreamInvalidate(stream)
       FSEventStreamRelease(stream)
       self.stream = nil
-      NSLog("Cuelixa: could not start library FSEvents stream; using fallback scan timer")
+      logger.error("Could not start FSEvents stream; using fallback scan timer")
       return false
     }
     return true
@@ -112,18 +119,48 @@ private final class ScanFailureFlag: @unchecked Sendable {
   }
 }
 
+struct LibraryScanMetrics: Sendable, Equatable {
+  var enumeratedFiles = 0
+  var hashedFiles = 0
+  var databaseTransactions = 0
+  var completed = false
+}
+
 actor LibraryScanner {
   static let audioExtensions: Set<String> = ["mp3", "m4a", "aac", "flac", "wav", "ogg", "opus"]
 
   private let db: LibraryDatabase
+  private let directories: AppDirectories
+  private let hashFile: @Sendable (URL) async throws -> String
+  private let metadataLoader: @Sendable (URL) async -> (duration: Double, title: String?)
+  private let onError: @MainActor @Sendable (String) -> Void
+  private let logger = Logger(subsystem: "io.github.erhansavas.Cuelixa", category: "Library")
   private var running = false
   private var rescanRequested = false
   private var scanTask: Task<Void, Never>?
   private var completions: [@MainActor @Sendable () -> Void] = []
   private var cleanedStaleImports = false
   private var shuttingDown = false
+  private var lastMetrics = LibraryScanMetrics()
 
-  init(db: LibraryDatabase) { self.db = db }
+  init(
+    db: LibraryDatabase, directories: AppDirectories = AppPaths.current,
+    hashFile: @escaping @Sendable (URL) async throws -> String = sha256FileCancellable,
+    metadataLoader: @escaping @Sendable (URL) async -> (duration: Double, title: String?) =
+      audioMetadata,
+    onError: @escaping @MainActor @Sendable (String) -> Void = { _ in }
+  ) {
+    self.db = db
+    self.directories = directories
+    self.hashFile = hashFile
+    self.metadataLoader = metadataLoader
+    self.onError = onError
+  }
+
+  func metrics() -> LibraryScanMetrics { lastMetrics }
+
+  /// Deterministic integration-test seam; production callers use coalesced scan().
+  func reconcileNow() async { await perform() }
 
   /// Public fire-and-forget entry point for UI/FSEvents callers. Actor
   /// isolation owns all coalescing state; callers never share mutable scanner
@@ -195,7 +232,8 @@ actor LibraryScanner {
   private func enumerateAudioURLs(fileManager fm: FileManager, failure: ScanFailureFlag) -> [URL]? {
     guard
       let en = fm.enumerator(
-        at: AppPaths.library, includingPropertiesForKeys: [.isRegularFileKey],
+        at: directories.library,
+        includingPropertiesForKeys: [.isRegularFileKey, .isSymbolicLinkKey],
         options: [],
         errorHandler: { _, _ in
           failure.mark()
@@ -204,12 +242,14 @@ actor LibraryScanner {
     else { return nil }
 
     var urls: [URL] = []
+    var canonicalPaths = Set<String>()
     for case let candidate as URL in en {
       if Task.isCancelled { return nil }
       guard Self.audioExtensions.contains(candidate.pathExtension.lowercased()) else { continue }
       let resolved = candidate.standardizedFileURL.resolvingSymlinksInPath()
       var isDirectory: ObjCBool = false
-      guard fm.fileExists(atPath: resolved.path, isDirectory: &isDirectory), !isDirectory.boolValue
+      guard fm.fileExists(atPath: resolved.path, isDirectory: &isDirectory), !isDirectory.boolValue,
+        canonicalPaths.insert(resolved.path).inserted
       else { continue }
       urls.append(resolved)
     }
@@ -222,20 +262,31 @@ actor LibraryScanner {
   private func cleanupStaleImportFiles(fileManager fm: FileManager) {
     guard
       let contents = try? fm.contentsOfDirectory(
-        at: AppPaths.library, includingPropertiesForKeys: nil)
+        at: directories.library, includingPropertiesForKeys: nil)
     else { return }
     for url in contents
     where url.lastPathComponent.hasPrefix(".cuelixa-import-") && url.pathExtension == "tmp" {
       do {
         try fm.removeItem(at: url)
       } catch {
-        NSLog("Cuelixa: could not remove stale import staging file: %@", error.localizedDescription)
+        logger.error(
+          "Could not remove stale import staging file: \(error.localizedDescription, privacy: .private)"
+        )
       }
     }
   }
 
   private func perform() async {
-    try? AppPaths.ensure()
+    var metrics = LibraryScanMetrics()
+    defer { lastMetrics = metrics }
+    do {
+      try directories.ensure()
+    } catch {
+      logger.error(
+        "Could not prepare library directories: \(error.localizedDescription, privacy: .private)")
+      await onError("The lesson library folders could not be prepared.")
+      return
+    }
     let fm = FileManager.default
     if !cleanedStaleImports {
       cleanupStaleImportFiles(fileManager: fm)
@@ -244,9 +295,16 @@ actor LibraryScanner {
     if Task.isCancelled { return }
     let failure = ScanFailureFlag()
     guard let urls = enumerateAudioURLs(fileManager: fm, failure: failure), !Task.isCancelled else {
+      if !Task.isCancelled { await onError("The lesson library could not be read.") }
       return
     }
-    var seen = Set<String>()
+    metrics.enumeratedFiles = urls.count
+    guard let knownRecords = db.fileRecords() else {
+      await onError("The library database could not load its previous scan state.")
+      return
+    }
+    var scannedRecords: [ScannedFileRecord] = []
+    scannedRecords.reserveCapacity(urls.count)
     let now = Date().timeIntervalSince1970
     for url in urls {
       if Task.isCancelled { return }
@@ -255,22 +313,17 @@ actor LibraryScanner {
         continue
       }
       let path = url.path
-      if let known = db.fileSignature(path: path), known.1 == sig,
-        let track = db.existingTrack(hash: known.0)
-      {
-        if db.upsertFile(
-          path: path, hash: known.0, signature: sig, title: track.title,
-          duration: track.duration, seenAt: now)
-        {
-          seen.insert(path)
-        } else {
-          failure.mark()
-        }
+      if let known = knownRecords[path], known.signature == sig {
+        scannedRecords.append(
+          .init(
+            path: path, hash: known.hash, signature: sig,
+            title: known.title, duration: known.duration))
         continue
       }
       let hash: String
       do {
-        hash = try await sha256FileCancellable(url)
+        hash = try await hashFile(url)
+        metrics.hashedFiles += 1
       } catch is CancellationError {
         return
       } catch {
@@ -278,26 +331,30 @@ actor LibraryScanner {
         continue
       }
       if Task.isCancelled { return }
-      let meta = await audioMetadata(url)
+      let meta = await metadataLoader(url)
       if Task.isCancelled { return }
       guard fileSignature(url) == sig else {
         failure.mark()
         continue
       }
       let title = meta.title ?? humanizedTitle(url.deletingPathExtension().lastPathComponent)
-      if db.upsertFile(
-        path: path, hash: hash, signature: sig, title: title,
-        duration: meta.duration, seenAt: now)
-      {
-        seen.insert(path)
-      } else {
-        failure.mark()
-      }
+      scannedRecords.append(
+        .init(
+          path: path, hash: hash, signature: sig, title: title, duration: meta.duration))
     }
     if failure.value {
-      NSLog("Cuelixa: library scan was incomplete; stale-path reconciliation was deferred")
-    } else if !db.reconcile(seenPaths: seen) {
-      NSLog("Cuelixa: library reconciliation failed")
+      logger.error("Library scan was incomplete; stale-path reconciliation was deferred")
+    }
+    if !db.applyScan(scannedRecords, seenAt: now, complete: !failure.value) {
+      logger.error("Library reconciliation failed")
+      await onError("The library database could not save the latest scan.")
+    } else {
+      metrics.databaseTransactions = 1
+      metrics.completed = !failure.value
+      if failure.value {
+        await onError(
+          "Some lesson files could not be read. Unseen library entries were preserved.")
+      }
     }
   }
 }
