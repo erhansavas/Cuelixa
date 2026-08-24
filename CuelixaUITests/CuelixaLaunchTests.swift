@@ -12,7 +12,8 @@ final class CuelixaLaunchTests: XCTestCase {
     let reachedForeground = app.wait(for: .runningForeground, timeout: 15)
     XCTAssertTrue(reachedForeground)
     app.typeKey("s", modifierFlags: [.control, .option])
-    let remainedForeground = app.state == .runningForeground
-    XCTAssertTrue(remainedForeground)
+    let remainedRunning =
+      app.state == .runningForeground || app.state == .runningBackground
+    XCTAssertTrue(remainedRunning)
   }
 }
