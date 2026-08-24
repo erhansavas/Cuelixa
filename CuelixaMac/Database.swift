@@ -1,6 +1,22 @@
 // SPDX-License-Identifier: Apache-2.0
 import Foundation
+import OSLog
 import SQLite3
+
+struct StoredFileRecord: Sendable {
+  let hash: String
+  let signature: FileSignature
+  let title: String
+  let duration: Double
+}
+
+struct ScannedFileRecord: Sendable {
+  let path: String
+  let hash: String
+  let signature: FileSignature
+  let title: String
+  let duration: Double
+}
 
 private func sqliteTransientDestructor() -> sqlite3_destructor_type {
   unsafeBitCast(-1, to: sqlite3_destructor_type.self)
@@ -10,12 +26,13 @@ private func sqliteTransientDestructor() -> sqlite3_destructor_type {
 // operation is serialized through `queue`; the connection is opened with FULLMUTEX
 // as a second line of defense. `@unchecked Sendable` documents that synchronization.
 final class LibraryDatabase: @unchecked Sendable {
+  private let logger = Logger(subsystem: "io.github.erhansavas.Cuelixa", category: "Database")
   private let url: URL
   private let queue = DispatchQueue(label: "io.github.erhansavas.Cuelixa.database")
   private var connection: OpaquePointer?
   private(set) var initializationError: String?
 
-  init(url: URL = AppPaths.database) {
+  init(url: URL = AppPaths.current.database) {
     self.url = url
     do {
       try FileManager.default.createDirectory(
@@ -29,7 +46,7 @@ final class LibraryDatabase: @unchecked Sendable {
       if !createSchema(db) {
         let message = sqliteMessage(db)
         initializationError = message
-        NSLog("Cuelixa: library database schema initialization failed: %@", message)
+        logger.error("Library database schema initialization failed: \(message, privacy: .private)")
         return false
       }
       return true
@@ -158,6 +175,145 @@ final class LibraryDatabase: @unchecked Sendable {
             ctimeNS: sqlite3_column_int64(stmt, 3))
         )
       } ?? nil
+    }
+  }
+
+  func fileRecords() -> [String: StoredFileRecord]? {
+    queue.sync {
+      withDB { db -> [String: StoredFileRecord]? in
+        var statement: OpaquePointer?
+        defer { sqlite3_finalize(statement) }
+        guard
+          sqlite3_prepare_v2(
+            db,
+            """
+            SELECT f.path,f.content_hash,f.size,f.mtime_ns,f.ctime_ns,t.title,t.duration
+            FROM files f JOIN tracks t ON t.content_hash = f.content_hash
+            """, -1, &statement, nil) == SQLITE_OK
+        else { return nil }
+        var records: [String: StoredFileRecord] = [:]
+        var step = sqlite3_step(statement)
+        while step == SQLITE_ROW {
+          let path = String(cString: sqlite3_column_text(statement, 0))
+          let hash = String(cString: sqlite3_column_text(statement, 1))
+          let title = String(cString: sqlite3_column_text(statement, 5))
+          records[path] = StoredFileRecord(
+            hash: hash,
+            signature: .init(
+              size: sqlite3_column_int64(statement, 2),
+              mtimeNS: sqlite3_column_int64(statement, 3),
+              ctimeNS: sqlite3_column_int64(statement, 4)),
+            title: title, duration: sqlite3_column_double(statement, 6))
+          step = sqlite3_step(statement)
+        }
+        guard step == SQLITE_DONE else { return nil }
+        return records
+      } ?? nil
+    }
+  }
+
+  /// Applies one complete scanner pass with one SQLite transaction. A partial
+  /// pass may publish verified discoveries but never marks unseen paths missing.
+  @discardableResult
+  func applyScan(
+    _ records: [ScannedFileRecord], seenAt: Double, complete: Bool,
+    failAfterRecordForTesting: Int? = nil
+  ) -> Bool {
+    queue.sync {
+      withDB { db in
+        guard execute("BEGIN IMMEDIATE", on: db) else { return false }
+        var committed = false
+        defer { if !committed { _ = execute("ROLLBACK", on: db) } }
+
+        var trackStatement: OpaquePointer?
+        var fileStatement: OpaquePointer?
+        var selectStatement: OpaquePointer?
+        var deleteStatement: OpaquePointer?
+        defer {
+          sqlite3_finalize(trackStatement)
+          sqlite3_finalize(fileStatement)
+          sqlite3_finalize(selectStatement)
+          sqlite3_finalize(deleteStatement)
+        }
+        guard
+          sqlite3_prepare_v2(
+            db,
+            """
+            INSERT INTO tracks(content_hash,title,duration,added_at,last_seen_at,missing)
+            VALUES(?,?,?,?,?,0)
+            ON CONFLICT(content_hash) DO UPDATE SET title = excluded.title,
+              duration = CASE WHEN excluded.duration>0 THEN excluded.duration ELSE tracks.duration END,
+              last_seen_at = excluded.last_seen_at, missing = 0
+            """, -1, &trackStatement, nil) == SQLITE_OK,
+          sqlite3_prepare_v2(
+            db,
+            """
+            INSERT INTO files(path,content_hash,size,mtime_ns,ctime_ns,last_seen_at)
+            VALUES(?,?,?,?,?,?)
+            ON CONFLICT(path) DO UPDATE SET content_hash = excluded.content_hash,
+              size = excluded.size,mtime_ns = excluded.mtime_ns,
+              ctime_ns = excluded.ctime_ns,last_seen_at = excluded.last_seen_at
+            """, -1, &fileStatement, nil) == SQLITE_OK
+        else { return false }
+
+        for (index, record) in records.enumerated() {
+          sqlite3_reset(trackStatement)
+          sqlite3_clear_bindings(trackStatement)
+          sqlite3_bind_text(trackStatement, 1, record.hash, -1, sqliteTransientDestructor())
+          sqlite3_bind_text(trackStatement, 2, record.title, -1, sqliteTransientDestructor())
+          sqlite3_bind_double(trackStatement, 3, record.duration)
+          sqlite3_bind_double(trackStatement, 4, seenAt)
+          sqlite3_bind_double(trackStatement, 5, seenAt)
+          guard sqlite3_step(trackStatement) == SQLITE_DONE else { return false }
+
+          sqlite3_reset(fileStatement)
+          sqlite3_clear_bindings(fileStatement)
+          sqlite3_bind_text(fileStatement, 1, record.path, -1, sqliteTransientDestructor())
+          sqlite3_bind_text(fileStatement, 2, record.hash, -1, sqliteTransientDestructor())
+          sqlite3_bind_int64(fileStatement, 3, record.signature.size)
+          sqlite3_bind_int64(fileStatement, 4, record.signature.mtimeNS)
+          sqlite3_bind_int64(fileStatement, 5, record.signature.ctimeNS)
+          sqlite3_bind_double(fileStatement, 6, seenAt)
+          guard sqlite3_step(fileStatement) == SQLITE_DONE else { return false }
+          if failAfterRecordForTesting == index + 1 { return false }
+        }
+
+        if complete {
+          let seenPaths = Set(records.map(\.path))
+          guard
+            sqlite3_prepare_v2(db, "SELECT path FROM files", -1, &selectStatement, nil)
+              == SQLITE_OK
+          else { return false }
+          var stale: [String] = []
+          var selectStep = sqlite3_step(selectStatement)
+          while selectStep == SQLITE_ROW {
+            let path = String(cString: sqlite3_column_text(selectStatement, 0))
+            if !seenPaths.contains(path) { stale.append(path) }
+            selectStep = sqlite3_step(selectStatement)
+          }
+          guard selectStep == SQLITE_DONE else { return false }
+          guard
+            sqlite3_prepare_v2(
+              db, "DELETE FROM files WHERE path = ?", -1,
+              &deleteStatement, nil) == SQLITE_OK
+          else { return false }
+          for path in stale {
+            sqlite3_reset(deleteStatement)
+            sqlite3_clear_bindings(deleteStatement)
+            sqlite3_bind_text(deleteStatement, 1, path, -1, sqliteTransientDestructor())
+            guard sqlite3_step(deleteStatement) == SQLITE_DONE else { return false }
+          }
+          guard
+            execute(
+              "UPDATE tracks SET missing = CASE WHEN EXISTS(SELECT 1 FROM files f WHERE f.content_hash = tracks.content_hash) THEN 0 ELSE 1 END",
+              on: db)
+          else { return false }
+        }
+
+        guard execute("COMMIT", on: db) else { return false }
+        committed = true
+        return true
+      } ?? false
     }
   }
 
@@ -407,7 +563,7 @@ final class LibraryDatabase: @unchecked Sendable {
         return sqlite3_step(st) == SQLITE_DONE
       } ?? false
     }
-    if !succeeded { NSLog("Cuelixa: failed to persist playback position") }
+    if !succeeded { logger.error("Failed to persist playback position") }
     return succeeded
   }
   @discardableResult
@@ -433,7 +589,7 @@ final class LibraryDatabase: @unchecked Sendable {
         return sqlite3_step(st) == SQLITE_DONE
       } ?? false
     }
-    if !succeeded { NSLog("Cuelixa: failed to persist completed state") }
+    if !succeeded { logger.error("Failed to persist completed state") }
     return succeeded
   }
   @discardableResult

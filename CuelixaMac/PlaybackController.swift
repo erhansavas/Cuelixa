@@ -19,6 +19,7 @@ enum PlaybackState: String, Equatable {
 @MainActor
 final class PlaybackController: ObservableObject {
   private let logger = Logger(subsystem: "io.github.erhansavas.Cuelixa", category: "Playback")
+  private let directories: AppDirectories
   @Published private(set) var state: PlaybackState = .idle
   @Published private(set) var position: Double = 0
   @Published private(set) var duration: Double = 0
@@ -89,8 +90,9 @@ final class PlaybackController: ObservableObject {
   var onStateChanged: (() -> Void)?
   var onPresentationChanged: (() -> Void)?
 
-  init() {
-    if let d = try? Data(contentsOf: AppPaths.preferences),
+  init(directories: AppDirectories = AppPaths.current) {
+    self.directories = directories
+    if let d = try? Data(contentsOf: directories.preferences),
       let o = try? JSONSerialization.jsonObject(with: d) as? [String: Any],
       let v = o["volume"] as? Double
     {
@@ -912,9 +914,15 @@ final class PlaybackController: ObservableObject {
   }
 
   private func saveVolume() {
-    try? AppPaths.ensure()
+    do {
+      try directories.ensure()
+    } catch {
+      logger.error(
+        "Could not prepare preferences directory: \(error.localizedDescription, privacy: .private)")
+      return
+    }
     var o: [String: Any] = [:]
-    if let d = try? Data(contentsOf: AppPaths.preferences),
+    if let d = try? Data(contentsOf: directories.preferences),
       let old = try? JSONSerialization.jsonObject(with: d) as? [String: Any]
     {
       o = old
@@ -923,7 +931,11 @@ final class PlaybackController: ObservableObject {
     if let d = try? JSONSerialization.data(
       withJSONObject: o, options: [.prettyPrinted, .sortedKeys])
     {
-      try? d.write(to: AppPaths.preferences, options: .atomic)
+      do {
+        try d.write(to: directories.preferences, options: .atomic)
+      } catch {
+        logger.error("Could not persist volume: \(error.localizedDescription, privacy: .private)")
+      }
     }
   }
   private func refreshNowPlaying() {

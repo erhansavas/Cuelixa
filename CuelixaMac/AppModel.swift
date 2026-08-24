@@ -2,9 +2,12 @@
 import AppKit
 import Combine
 import Foundation
+import OSLog
 
 @MainActor
 final class AppModel: ObservableObject {
+  private let logger = Logger(subsystem: "io.github.erhansavas.Cuelixa", category: "Application")
+  let directories: AppDirectories
   @Published private(set) var section: LibrarySection = .all
   @Published private(set) var query = ""
   @Published var tracks: [Track] = []
@@ -19,12 +22,15 @@ final class AppModel: ObservableObject {
   @Published private(set) var isImporting = false
   @Published private(set) var subtitleOverlayEnabled = true
 
-  let db = LibraryDatabase()
-  lazy var scanner = LibraryScanner(db: db)
-  let cache = TranscriptCache()
+  let db: LibraryDatabase
+  lazy var scanner = LibraryScanner(
+    db: db, directories: directories,
+    onError: { [weak self] detail in self?.presentLibraryError(detail) })
+  let cache: TranscriptCache
   lazy var cacheVerifier = TranscriptAvailabilityWorker(cache: cache)
-  lazy var transcriber = NativeTranscriber(cache: cache)
-  let player = PlaybackController()
+  lazy var transcriber = NativeTranscriber(cache: cache, stagingDirectory: directories.staging)
+  let player: PlaybackController
+  let importCoordinator: ImportCoordinator
   weak var mainWindow: NSWindow?
   private var libraryMonitor: LibraryChangeMonitor?
   private var scanFallbackTimer: Timer?
@@ -55,8 +61,14 @@ final class AppModel: ObservableObject {
   private var subtitleRefreshTask: Task<Void, Never>?
   private var subtitleRefreshGeneration = 0
   private var subtitleStatusOverrides: [String: Bool] = [:]
+  private var libraryErrorPresented = false
 
-  init() {
+  init(directories: AppDirectories = AppPaths.current) {
+    self.directories = directories
+    db = LibraryDatabase(url: directories.database)
+    cache = TranscriptCache(directories: directories)
+    player = PlaybackController(directories: directories)
+    importCoordinator = ImportCoordinator(directories: directories)
     player.onPositionSave = { [weak self] hash, pos in
       self?.db.setPosition(hash: hash, position: pos)
     }
@@ -100,7 +112,13 @@ final class AppModel: ObservableObject {
   func start() {
     guard !started else { return }
     started = true
-    try? AppPaths.ensure()
+    do {
+      try directories.ensure()
+    } catch {
+      presentFatalStartupError(
+        title: "Cuelixa couldn’t prepare its folders", detail: error.localizedDescription)
+      return
+    }
     if let databaseError = db.initializationError {
       let alert = NSAlert()
       alert.alertStyle = .critical
@@ -118,7 +136,7 @@ final class AppModel: ObservableObject {
     // Start observation before the initial scan. If the library changes while
     // that first reconciliation is running, the scanner coalesces one follow-up
     // pass instead of leaving a startup race window.
-    let monitor = LibraryChangeMonitor { [weak self] event in
+    let monitor = LibraryChangeMonitor(root: directories.library) { [weak self] event in
       self?.handleLibraryChange(event)
     }
     if monitor.start() {
@@ -127,6 +145,56 @@ final class AppModel: ObservableObject {
       installFallbackScanTimer()
     }
     refreshAndScan()
+    presentLegacyLibraryIssueIfNeeded()
+  }
+
+  private func presentFatalStartupError(title: String, detail: String) {
+    let alert = NSAlert()
+    alert.alertStyle = .critical
+    alert.messageText = title
+    alert.informativeText = detail
+    alert.addButton(withTitle: "Quit")
+    if let mainWindow = resolveMainWindow() {
+      alert.beginSheetModal(for: mainWindow) { _ in NSApp.terminate(nil) }
+    } else {
+      alert.runModal()
+      NSApp.terminate(nil)
+    }
+  }
+
+  private func presentLegacyLibraryIssueIfNeeded() {
+    guard let issue = directories.legacyLibraryIssue else { return }
+    let key = "DidExplainLegacyLibraryFallback"
+    guard !UserDefaults.standard.bool(forKey: key) else { return }
+    UserDefaults.standard.set(true, forKey: key)
+    let alert = NSAlert()
+    alert.alertStyle = .warning
+    alert.messageText = "Cuelixa used the safe library folder"
+    alert.informativeText = issue.userMessage
+    alert.addButton(withTitle: "OK")
+    if let window = resolveMainWindow() {
+      alert.beginSheetModal(for: window)
+    } else {
+      alert.runModal()
+    }
+  }
+
+  private func presentLibraryError(_ detail: String) {
+    guard !libraryErrorPresented, !confirmedQuitInProgress else { return }
+    libraryErrorPresented = true
+    let alert = NSAlert()
+    alert.alertStyle = .warning
+    alert.messageText = "Cuelixa couldn’t scan the lesson library"
+    alert.informativeText = detail
+    alert.addButton(withTitle: "OK")
+    if let window = resolveMainWindow() {
+      alert.beginSheetModal(for: window) { [weak self] _ in
+        self?.libraryErrorPresented = false
+      }
+    } else {
+      alert.runModal()
+      libraryErrorPresented = false
+    }
   }
 
   private func installFallbackScanTimer() {
@@ -143,18 +211,20 @@ final class AppModel: ObservableObject {
   private func handleLibraryChange(_ event: LibraryChangeEvent) {
     guard !confirmedQuitInProgress else { return }
     if event.mustRescan {
-      NSLog("Cuelixa: FSEvents requested a full library reconciliation")
+      logger.notice("FSEvents requested a full library reconciliation")
     }
     if event.rootChanged {
       // WatchRoot means the monitored path (or a parent) moved/deleted. Cuelixa's
       // contract is the selected Cuelixa library root, so recreate it and restart the
       // stream before reconciling the hierarchy.
       do {
-        try AppPaths.ensure()
+        try directories.ensure()
       } catch {
-        NSLog(
-          "Cuelixa: could not recreate the library root after RootChanged: %@",
-          error.localizedDescription)
+        logger.error(
+          "Could not recreate the library root after RootChanged: \(error.localizedDescription, privacy: .private)"
+        )
+        presentLibraryError("The lesson library folder could not be recreated.")
+        return
       }
       if libraryMonitor?.restart() != true {
         libraryMonitor = nil
@@ -672,8 +742,8 @@ final class AppModel: ObservableObject {
   }
 
   private func isCancellation(_ error: Error) -> Bool {
-    error.localizedDescription.trimmingCharacters(in: .whitespacesAndNewlines).lowercased()
-      == "cancelled"
+    if error is CancellationError { return true }
+    return (error as? CuelixaError) == .cancelled
   }
 
   func hideBatch() { if !batch.active { batch = BatchPresentation() } }
@@ -852,83 +922,43 @@ final class AppModel: ObservableObject {
 
   func importFiles(_ urls: [URL]) {
     guard !confirmedQuitInProgress else { return }
-    try? AppPaths.ensure()
-    let accepted = urls
-    let root = AppPaths.library.standardizedFileURL.resolvingSymlinksInPath()
     let importID = UUID()
 
     importBatchCount += 1
     isImporting = true
 
-    let task = Task { @MainActor [weak self, accepted, root] in
-      let work = Task.detached(priority: .utility) {
-        try Self.performImportCopies(accepted: accepted, root: root)
-      }
-      await withTaskCancellationHandler {
-        _ = try? await work.value
-      } onCancel: {
-        work.cancel()
-      }
-
+    let task = Task { @MainActor [weak self, urls] in
       guard let self else { return }
+      let summary = await self.importCoordinator.importFiles(urls)
       self.finishedImportBatch(importID)
       self.refreshAndScan()
+      self.presentImportSummary(summary)
     }
     importTasks[importID] = task
   }
 
-  nonisolated private static func performImportCopies(accepted: [URL], root: URL) throws {
-    let fm = FileManager.default
-    for sourceURL in accepted {
-      try Task.checkCancellation()
-      guard LibraryScanner.audioExtensions.contains(sourceURL.pathExtension.lowercased()) else {
-        continue
-      }
-      let source = sourceURL.standardizedFileURL.resolvingSymlinksInPath()
-      var isDirectory: ObjCBool = false
-      guard fm.fileExists(atPath: source.path, isDirectory: &isDirectory), !isDirectory.boolValue
-      else { continue }
-
-      let sourcePath = source.path
-      if sourcePath == root.path || sourcePath.hasPrefix(root.path + "/") { continue }
-
-      var destination = root.appendingPathComponent(source.lastPathComponent)
-      if fm.fileExists(atPath: destination.path), let sourceSignature = fileSignature(source),
-        let destinationSignature = fileSignature(destination),
-        sourceSignature.size == destinationSignature.size,
-        let sourceHash = sha256File(source), let destinationHash = sha256File(destination),
-        sourceHash == destinationHash
-      {
-        continue
-      }
-
-      let stem = source.deletingPathExtension().lastPathComponent
-      let suffix = source.pathExtension
-      if fm.fileExists(atPath: destination.path) {
-        var allocated: URL?
-        for index in 2..<10_000 {
-          try Task.checkCancellation()
-          let name = suffix.isEmpty ? "\(stem) (\(index))" : "\(stem) (\(index)).\(suffix)"
-          let candidate = root.appendingPathComponent(name)
-          if !fm.fileExists(atPath: candidate.path) {
-            allocated = candidate
-            break
-          }
-        }
-        guard let allocated else { continue }
-        destination = allocated
-      }
-
-      try Task.checkCancellation()
-      let temporary = root.appendingPathComponent(".cuelixa-import-\(UUID().uuidString).tmp")
-      do {
-        try fm.copyItem(at: source, to: temporary)
-        try Task.checkCancellation()
-        try fm.moveItem(at: temporary, to: destination)
-      } catch {
-        try? fm.removeItem(at: temporary)
-        if error is CancellationError { throw error }
-      }
+  private func presentImportSummary(_ summary: ImportSummary) {
+    guard !confirmedQuitInProgress else { return }
+    let alert = NSAlert()
+    alert.alertStyle = summary.count(.failed) > 0 ? .warning : .informational
+    alert.messageText = "Import completed with details"
+    let counts = [
+      "\(summary.count(.imported)) imported", "\(summary.count(.duplicate)) already present",
+      "\(summary.count(.unsupported)) unsupported", "\(summary.count(.failed)) failed",
+      "\(summary.count(.cancelled)) cancelled",
+    ]
+    let failures = summary.results.filter {
+      $0.disposition == .failed || $0.disposition == .unsupported || $0.disposition == .cancelled
+    }.prefix(8).map { result in
+      "• \(result.sourceName): \(result.detail ?? result.disposition.rawValue)"
+    }
+    alert.informativeText =
+      (counts.joined(separator: " · ") + "\n\n" + failures.joined(separator: "\n"))
+    alert.addButton(withTitle: "OK")
+    if let window = resolveMainWindow() {
+      alert.beginSheetModal(for: window)
+    } else {
+      alert.runModal()
     }
   }
 
@@ -945,15 +975,24 @@ final class AppModel: ObservableObject {
     }
   }
 
-  func openLibraryFolder() { NSWorkspace.shared.open(AppPaths.library) }
+  func openLibraryFolder() { NSWorkspace.shared.open(directories.library) }
 
   private func savePrefs() {
-    try? AppPaths.ensure()
+    do {
+      try directories.ensure()
+    } catch {
+      logger.error(
+        "Could not prepare preferences directory: \(error.localizedDescription, privacy: .private)")
+      return
+    }
     let o: [String: Any] = ["volume": player.volume]
-    if let d = try? JSONSerialization.data(
-      withJSONObject: o, options: [.prettyPrinted, .sortedKeys])
-    {
-      try? d.write(to: AppPaths.preferences, options: .atomic)
+    do {
+      let data = try JSONSerialization.data(
+        withJSONObject: o, options: [.prettyPrinted, .sortedKeys])
+      try data.write(to: directories.preferences, options: .atomic)
+    } catch {
+      logger.error(
+        "Could not persist preferences: \(error.localizedDescription, privacy: .private)")
     }
   }
   func saveNow() {

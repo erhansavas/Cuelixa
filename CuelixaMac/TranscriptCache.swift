@@ -1,5 +1,6 @@
 // SPDX-License-Identifier: Apache-2.0
 import Foundation
+import OSLog
 
 /// Serializes broad transcript availability verification away from MainActor.
 actor TranscriptAvailabilityWorker {
@@ -26,6 +27,9 @@ actor TranscriptAvailabilityWorker {
 // SAFETY: the only shared mutable state is verifiedMemo, and every access is
 // serialized by memoLock. URLs/signatures stored in the memo are immutable values.
 final class TranscriptCache: @unchecked Sendable {
+  private let logger = Logger(
+    subsystem: "io.github.erhansavas.Cuelixa", category: "TranscriptCache")
+  private let directories: AppDirectories
   private struct Signature: Equatable {
     let srtSize: UInt64
     let srtMTimeNS: Int64
@@ -48,22 +52,24 @@ final class TranscriptCache: @unchecked Sendable {
   private let memoLock = NSLock()
   private var verifiedMemo: [MemoKey: (Signature, URL?)] = [:]
 
+  init(directories: AppDirectories = AppPaths.current) { self.directories = directories }
+
   /// Preferred durable transcript URL. Call verifiedSRTURL when opening an
   /// existing transcript because r20/r21 cache-resident output is still supported.
   func srtURL(hash: String) -> URL {
-    AppPaths.transcripts.appendingPathComponent(hash + ".srt")
+    directories.transcripts.appendingPathComponent(hash + ".srt")
   }
 
   func manifestURL(hash: String) -> URL {
-    AppPaths.transcripts.appendingPathComponent(hash + ".json")
+    directories.transcripts.appendingPathComponent(hash + ".json")
   }
 
   private func legacySRTURL(hash: String) -> URL {
-    AppPaths.legacySubtitles.appendingPathComponent(hash + ".srt")
+    directories.legacySubtitles.appendingPathComponent(hash + ".srt")
   }
 
   private func legacyManifestURL(hash: String) -> URL {
-    AppPaths.legacySubtitles.appendingPathComponent(hash + ".json")
+    directories.legacySubtitles.appendingPathComponent(hash + ".json")
   }
 
   func verified(hash: String) -> Bool { verifiedSRTURL(hash: hash) != nil }
@@ -109,7 +115,7 @@ final class TranscriptCache: @unchecked Sendable {
   /// are never touched by this maintenance action.
   func resetManagedTranscripts() throws {
     let fm = FileManager.default
-    for directory in [AppPaths.transcripts, AppPaths.legacySubtitles] {
+    for directory in [directories.transcripts, directories.legacySubtitles] {
       guard fm.fileExists(atPath: directory.path) else { continue }
       for item in try fm.contentsOfDirectory(
         at: directory, includingPropertiesForKeys: nil, options: [.skipsHiddenFiles]
@@ -127,11 +133,18 @@ final class TranscriptCache: @unchecked Sendable {
   /// The SRT is committed before the manifest; verification requires both files
   /// and matching hashes, so an interrupted write can never look valid.
   func commit(hash: String, cues: [SubtitleCue]) -> URL? {
-    try? AppPaths.ensure()
     guard !cues.isEmpty else { return nil }
+    do {
+      try directories.ensure()
+    } catch {
+      logger.error(
+        "Could not prepare transcript directories: \(error.localizedDescription, privacy: .private)"
+      )
+      return nil
+    }
     let dest = srtURL(hash: hash)
     let manifestDest = manifestURL(hash: hash)
-    let stage = AppPaths.staging.appendingPathComponent(UUID().uuidString + ".srt")
+    let stage = directories.staging.appendingPathComponent(UUID().uuidString + ".srt")
     defer { try? FileManager.default.removeItem(at: stage) }
 
     do {
@@ -163,6 +176,7 @@ final class TranscriptCache: @unchecked Sendable {
       memoLock.unlock()
       return verifiedSRTURL(hash: hash)
     } catch {
+      logger.error("Could not commit transcript: \(error.localizedDescription, privacy: .private)")
       memoLock.lock()
       verifiedMemo = verifiedMemo.filter { $0.key.hash != hash }
       memoLock.unlock()

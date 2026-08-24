@@ -17,7 +17,7 @@ Apple requires App Sandbox for Mac App Store distribution. If Cuelixa targets th
 Cuelixa currently uses one persistent recursive library root:
 
 - an existing `~/podcast` library is preserved and remains active non-destructively; otherwise
-- a clean profile uses the Foundation-resolved Music directory plus `Cuelixa`.
+- a clean profile uses `~/Music/Cuelixa`.
 
 The application recursively discovers media, monitors the hierarchy with FSEvents, imports files into that root, reads sidecar subtitles, and persists content-hash identity/state. Existing libraries must remain usable without destructive migration.
 

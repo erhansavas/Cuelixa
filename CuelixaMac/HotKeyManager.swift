@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: Apache-2.0
 import Carbon.HIToolbox
 import Foundation
+import OSLog
 
 /// Registers the finite Cuelixa shortcut set with Carbon's hot-key API. This is
 /// intentionally narrower than global NSEvent surveillance and therefore does
@@ -8,6 +9,7 @@ import Foundation
 @MainActor
 final class HotKeyManager {
   static let shared = HotKeyManager()
+  private let logger = Logger(subsystem: "io.github.erhansavas.Cuelixa", category: "HotKeys")
 
   weak var model: AppModel?
   private var refs: [EventHotKeyRef] = []
@@ -39,7 +41,7 @@ final class HotKeyManager {
 
     guard handlerStatus == noErr, handler != nil else {
       handler = nil
-      NSLog("Cuelixa: global hot-key event handler registration failed (%d)", handlerStatus)
+      logger.error("Global hot-key event handler registration failed: \(handlerStatus)")
       return
     }
 
@@ -57,14 +59,14 @@ final class HotKeyManager {
     for ref in refs {
       let status = UnregisterEventHotKey(ref)
       if status != noErr {
-        NSLog("Cuelixa: global hot-key unregistration failed (%d)", status)
+        logger.error("Global hot-key unregistration failed: \(status)")
       }
     }
     refs.removeAll(keepingCapacity: false)
     if let handler {
       let status = RemoveEventHandler(handler)
       if status != noErr {
-        NSLog("Cuelixa: global hot-key handler removal failed (%d)", status)
+        logger.error("Global hot-key handler removal failed: \(status)")
       }
       self.handler = nil
     }
@@ -78,7 +80,7 @@ final class HotKeyManager {
     if status == noErr, let ref {
       refs.append(ref)
     } else {
-      NSLog("Cuelixa: global hot-key %u registration failed (%d)", id, status)
+      logger.error("Global hot-key \(id) registration failed: \(status)")
     }
   }
 

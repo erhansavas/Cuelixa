@@ -8,7 +8,9 @@ expected_ci_macos_series="${CUELIXA_CI_MACOS_SERIES:-26}"
 expected_xcode="${CUELIXA_XCODE_VERSION:-26.6}"
 expected_xcode_build="${CUELIXA_XCODE_BUILD:-17F113}"
 expected_swift="${CUELIXA_SWIFT_VERSION:-6.3.3}"
-expected_build="51"
+expected_build="$(sed -nE 's/.*CURRENT_PROJECT_VERSION = ([^;]+);.*/\1/p' CuelixaMac.xcodeproj/project.pbxproj | head -n 1)"
+expected_version="$(sed -nE 's/.*MARKETING_VERSION = ([^;]+);.*/\1/p' CuelixaMac.xcodeproj/project.pbxproj | head -n 1)"
+[[ -n "$expected_build" && -n "$expected_version" ]] || { print -u2 'ERROR: project version metadata missing'; exit 1; }
 ci_mode="${CUELIXA_CI_MODE:-0}"
 
 fail() { print -u2 -- "ERROR: $*"; exit 1; }
@@ -36,10 +38,10 @@ swift_version_line="$(xcrun swiftc --version | head -n 1)"
 [[ "$swift_version_line" == *"Swift version $expected_swift"* ]] || fail "expected Swift $expected_swift from selected Xcode; found: $swift_version_line"
 
 print '=== Source / formatting / resource checks ==='
-for source in CuelixaMac/*.swift Tests/*.swift; do
+for source in CuelixaMac/*.swift Tests/*.swift CuelixaTests/*.swift CuelixaUITests/*.swift; do
   xcrun swiftc -frontend -parse "$source" >/dev/null
 done
-xcrun swift-format lint --strict CuelixaMac/*.swift Tests/*.swift
+xcrun swift-format lint --strict CuelixaMac/*.swift Tests/*.swift CuelixaTests/*.swift CuelixaUITests/*.swift
 plutil -lint CuelixaMac.xcodeproj/project.pbxproj
 
 # Every shipping Swift source must be represented in the Xcode project and Sources phase.
@@ -101,6 +103,8 @@ grep -q 'Window("Cuelixa", id: "library")' CuelixaMac/CuelixaApp.swift || fail '
 grep -q 'NavigationSplitView' CuelixaMac/MainView.swift || fail 'native split-view shell missing'
 grep -q 'List(model.tracks, selection:' CuelixaMac/MainView.swift || fail 'native lesson selection semantics missing'
 grep -q 'onKeyPress(.space)' CuelixaMac/MainView.swift || fail 'Space activation for selected lesson missing'
+grep -Fq 'Label("Library Actions"' CuelixaMac/MainView.swift || fail 'accessible library actions label missing'
+grep -Fq '"Your Library is Empty"' CuelixaMac/MainView.swift || fail 'empty-library accessibility text missing'
 grep -Fq 'model.playTrack(track)' CuelixaMac/MainView.swift || fail 'lesson Play action does not invoke model.playTrack(track)'
 grep -Fq 'play.fill' CuelixaMac/MainView.swift || fail 'discoverable lesson Play glyph missing'
 grep -q 'case preparing' CuelixaMac/PlaybackController.swift || fail 'truthful playback preparing state missing'
@@ -177,21 +181,26 @@ if grep -R -nE 'NSAppearance\(named:.*(darkAqua|aqua)' CuelixaMac; then
   fail 'forced application appearance reintroduced'
 fi
 
-grep -q '\.musicDirectory' CuelixaMac/AppPaths.swift || fail 'standard Music-directory resolution missing'
-grep -q 'static let transcripts = support.appendingPathComponent' CuelixaMac/AppPaths.swift || fail 'durable transcript directory missing'
+grep -q 'home.appendingPathComponent("Music"' CuelixaMac/AppPaths.swift || fail 'standard Music-directory resolution missing'
+grep -q 'let transcripts: URL' CuelixaMac/AppPaths.swift || fail 'durable transcript directory missing'
+grep -q 'validatedLegacyLibrary' CuelixaMac/AppPaths.swift || fail 'validated legacy-library resolution missing'
+grep -q 'actor ImportCoordinator' CuelixaMac/ImportCoordinator.swift || fail 'serialized import coordinator missing'
 grep -q 'verifiedSRTURL' CuelixaMac/TranscriptCache.swift || fail 'verified transcript resolution missing'
 grep -q 'validSidecarURL' CuelixaMac/Subtitle.swift || fail 'sidecar SRT compatibility missing'
 grep -q 'SubtitleTimeline.activeCueIndex' CuelixaMac/PlaybackController.swift || fail 'player does not use shared subtitle timeline'
 grep -q 'remoteCommandTargets' CuelixaMac/PlaybackController.swift || fail 'RemoteCommandCenter token ownership missing'
-grep -q 'attributeOptions: \[.audioTimeRange\]' CuelixaMac/NativeTranscriber.swift || fail 'Speech audioTimeRange attributes missing'
-grep -q 'for run in attributed.runs' CuelixaMac/NativeTranscriber.swift || fail 'correct AttributedString Run iteration missing'
-grep -q 'String(attributed\[run.range\].characters)' CuelixaMac/NativeTranscriber.swift || fail 'run.range extraction missing'
-grep -q 'SubtitleSegmenter.cues' CuelixaMac/NativeTranscriber.swift || fail 'timed Speech segmentation missing'
-if awk '/private static func collectCues/{flag=1} flag{print} /async throws -> \[SubtitleCue\]/{exit}' CuelixaMac/NativeTranscriber.swift | grep -q 'Job'; then
+speech_executor='CuelixaMac/TranscriptionExecutor.swift'
+grep -q 'protocol TranscriptionExecuting' "$speech_executor" || fail 'transcription executor boundary missing'
+grep -q 'actor AppleSpeechExecutor' "$speech_executor" || fail 'production Apple Speech executor missing'
+grep -q 'attributeOptions: \[.audioTimeRange\]' "$speech_executor" || fail 'Speech audioTimeRange attributes missing'
+grep -q 'for run in attributed.runs' "$speech_executor" || fail 'correct AttributedString Run iteration missing'
+grep -q 'String(attributed\[run.range\].characters)' "$speech_executor" || fail 'run.range extraction missing'
+grep -q 'SubtitleSegmenter.cues' "$speech_executor" || fail 'timed Speech segmentation missing'
+if awk '/private static func collectCues/{flag=1} flag{print} /async throws -> \[SubtitleCue\]/{exit}' "$speech_executor" | grep -q 'Job'; then
   fail 'mutable NativeTranscriber.Job crossed into Speech result collector'
 fi
-grep -q '@concurrent' CuelixaMac/NativeTranscriber.swift || fail 'concurrent Speech result collector missing'
-grep -q 'progress: @escaping @MainActor @Sendable' CuelixaMac/NativeTranscriber.swift || fail 'MainActor Sendable Speech progress boundary missing'
+grep -q '@concurrent' "$speech_executor" || fail 'concurrent Speech result collector missing'
+grep -q 'progress: @escaping @MainActor @Sendable' "$speech_executor" || fail 'MainActor Sendable Speech progress boundary missing'
 grep -q 'job.id == jobID' CuelixaMac/NativeTranscriber.swift || fail 'stable transcription job identity lookup missing'
 grep -q 'func liveScrub' CuelixaMac/PlaybackController.swift || fail 'event-driven scrub path missing'
 if awk '/func liveScrub/{flag=1} flag{print} /func endScrub/{exit}' CuelixaMac/PlaybackController.swift | grep -q 'seek('; then
@@ -204,6 +213,11 @@ grep -q 'register(6, key: UInt32(kVK_ANSI_U)' CuelixaMac/HotKeyManager.swift || 
 grep -q 'register(7, key: UInt32(kVK_ANSI_O)' CuelixaMac/HotKeyManager.swift || fail 'Ctrl+Option+O hotkey missing'
 grep -q 'guard !shuttingDown else { return }' CuelixaMac/LibraryScanner.swift || fail 'scanner shutdown enqueue guard missing'
 grep -q 'shuttingDown = true' CuelixaMac/LibraryScanner.swift || fail 'scanner shutdown latch missing'
+grep -q 'db.fileRecords()' CuelixaMac/LibraryScanner.swift || fail 'scanner bulk signature snapshot missing'
+grep -q 'db.applyScan' CuelixaMac/LibraryScanner.swift || fail 'scanner batch transaction missing'
+if awk '/private func perform\(\) async/{flag=1} flag{print}' CuelixaMac/LibraryScanner.swift | grep -Eq 'db\.(fileSignature|upsertFile)'; then
+  fail 'scanner per-file SQLite call regression reintroduced'
+fi
 
 print '=== Swift status-description return regression gate ==='
 python3 - <<'PY2'
@@ -225,8 +239,9 @@ print '=== Foundation AttributedString API smoke ==='
 SMOKE_DIR="$(mktemp -d "${TMPDIR:-/tmp}/cuelixa-smoke.XXXXXX")"
 DD_DEBUG="$(mktemp -d "${TMPDIR:-/tmp}/cuelixa-debug-deriveddata.XXXXXX")"
 DD_RELEASE="$(mktemp -d "${TMPDIR:-/tmp}/cuelixa-release-deriveddata.XXXXXX")"
+DD_TEST="$(mktemp -d "${TMPDIR:-/tmp}/cuelixa-test-deriveddata.XXXXXX")"
 LOG_DIR="$(mktemp -d "${TMPDIR:-/tmp}/cuelixa-validation.XXXXXX")"
-trap 'rm -rf "$SMOKE_DIR" "$DD_DEBUG" "$DD_RELEASE" "$LOG_DIR"' EXIT
+trap 'rm -rf "$SMOKE_DIR" "$DD_DEBUG" "$DD_RELEASE" "$DD_TEST" "$LOG_DIR"' EXIT
 xcrun swiftc -parse-as-library -warnings-as-errors Tests/AttributedStringRunSmoke.swift -o "$SMOKE_DIR/attributed-run-smoke"
 "$SMOKE_DIR/attributed-run-smoke"
 
@@ -261,6 +276,23 @@ xcrun swiftc -parse-as-library -warnings-as-errors \
   Tests/DatabaseSmokeSupport.swift Tests/DatabaseSmoke.swift -lsqlite3 -o "$SMOKE_DIR/database-smoke"
 "$SMOKE_DIR/database-smoke"
 
+print '=== Import / scanner batching / rollback smoke ==='
+xcrun swiftc -parse-as-library -swift-version 6 -strict-concurrency=complete -warnings-as-errors \
+  CuelixaMac/AppPaths.swift CuelixaMac/Models.swift CuelixaMac/Database.swift \
+  CuelixaMac/Utilities.swift CuelixaMac/LibraryScanner.swift CuelixaMac/ImportCoordinator.swift \
+  Tests/HardeningSmoke.swift -lsqlite3 -o "$SMOKE_DIR/hardening-smoke"
+"$SMOKE_DIR/hardening-smoke"
+
+print '=== Swift Testing integration and UI launch tests ==='
+xcodebuild \
+  -project CuelixaMac.xcodeproj \
+  -scheme Cuelixa \
+  -configuration Debug \
+  -destination 'platform=macOS,arch=arm64' \
+  -derivedDataPath "$DD_TEST" \
+  CODE_SIGNING_ALLOWED=YES CODE_SIGN_IDENTITY=- \
+  test 2>&1 | tee "$LOG_DIR/test.log"
+
 build_common=(
   -project CuelixaMac.xcodeproj
   -scheme Cuelixa
@@ -277,7 +309,7 @@ xcodebuild "${build_common[@]}" -configuration Release -derivedDataPath "$DD_REL
 print '=== Release Analyze ==='
 xcodebuild "${build_common[@]}" -configuration Release -derivedDataPath "$DD_RELEASE" analyze 2>&1 | tee "$LOG_DIR/analyze.log"
 
-warnings=$(grep -hE '(^|[[:space:]])warning:' "$LOG_DIR/debug-build.log" "$LOG_DIR/release-build.log" "$LOG_DIR/analyze.log" || true)
+warnings=$(grep -hE '(^|[[:space:]])warning:' "$LOG_DIR/test.log" "$LOG_DIR/debug-build.log" "$LOG_DIR/release-build.log" "$LOG_DIR/analyze.log" || true)
 unexpected_warnings=''
 if [[ -n "$warnings" ]]; then
   while IFS= read -r warning_line; do
@@ -295,7 +327,7 @@ if [[ -n "$warnings" ]]; then
   done <<< "$warnings"
 fi
 [[ -z "$unexpected_warnings" ]] || { print -u2 'ERROR: warnings emitted:'; print -u2 -- "$unexpected_warnings"; exit 1; }
-errors=$(grep -hE '(^|[[:space:]])error:' "$LOG_DIR/debug-build.log" "$LOG_DIR/release-build.log" "$LOG_DIR/analyze.log" || true)
+errors=$(grep -hE '(^|[[:space:]])error:' "$LOG_DIR/test.log" "$LOG_DIR/debug-build.log" "$LOG_DIR/release-build.log" "$LOG_DIR/analyze.log" || true)
 [[ -z "$errors" ]] || { print -u2 'ERROR: errors emitted:'; print -u2 -- "$errors"; exit 1; }
 
 print '=== Release settings ==='
@@ -307,7 +339,7 @@ print -- "$settings" | grep -Eq 'MACOSX_DEPLOYMENT_TARGET = 26\.0$' || fail 'dep
 print -- "$settings" | grep -Eq 'ENABLE_HARDENED_RUNTIME = YES$' || fail 'Hardened Runtime is not enabled'
 print -- "$settings" | grep -Eq 'ENABLE_APP_SANDBOX = NO$' || fail 'unexpected App Sandbox setting'
 print -- "$settings" | grep -Eq "CURRENT_PROJECT_VERSION = ${expected_build}$" || fail 'wrong engineering build number'
-print -- "$settings" | grep -Eq 'MARKETING_VERSION = 0\.6\.65$' || fail 'wrong marketing version'
+print -- "$settings" | grep -Fq "MARKETING_VERSION = ${expected_version}" || fail 'wrong marketing version'
 print -- "$settings" | grep -Eq 'PRODUCT_BUNDLE_IDENTIFIER = io\.github\.erhansavas\.Cuelixa$' || fail 'wrong bundle identifier'
 print -- "$settings" | grep -Fq 'INFOPLIST_KEY_NSHumanReadableCopyright = Copyright 2026 erhansavas.' || fail 'human-readable copyright metadata missing'
 print -- "$settings" | grep -Eq 'SWIFT_STRICT_CONCURRENCY = complete$' || fail 'strict concurrency is not complete'
@@ -366,9 +398,9 @@ fi
 pass 'APPKIT_COLOR_API_GUARD'
 
 # Current-release documentation must match the public version.
-grep -Fq 'Cuelixa 0.6.65' README.md || fail 'README version is stale'
-grep -Fq '0.6.65' docs/BUILD.md || fail 'BUILD documentation version is stale'
-grep -Fq '0.6.65' docs/QUALIFICATION.md || fail 'testing documentation version is stale'
+grep -Fq "Cuelixa ${expected_version}" README.md || fail 'README version is stale'
+grep -Fq "$expected_version" docs/BUILD.md || fail 'BUILD documentation version is stale'
+grep -Fq "$expected_version" docs/QUALIFICATION.md || fail 'testing documentation version is stale'
 pass 'CURRENT_DOCUMENTATION_SYNC'
 grep -Fq 'Reset Prepared Subtitles…' CuelixaMac/MainView.swift || fail 'subtitle reset toolbar action missing'
 grep -Fq 'resetManagedTranscripts' CuelixaMac/TranscriptCache.swift || fail 'managed subtitle reset implementation missing'
@@ -386,4 +418,3 @@ if [[ "$ci_mode" == "1" ]]; then
 else
   print 'VALIDATION PASSED — EXACT TARGET XCODE DEBUG + RELEASE + ANALYZE + SDK SMOKES'
 fi
-

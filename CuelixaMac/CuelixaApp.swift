@@ -31,7 +31,6 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
   let model = AppModel()
 
   func applicationDidFinishLaunching(_ notification: Notification) {
-    try? AppPaths.ensure()
     model.start()
     HotKeyManager.shared.install(model: model)
     NSApp.activate()

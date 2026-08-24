@@ -66,6 +66,7 @@ final class SubtitleOverlayController: NSObject {
   private var controlsVisible = true
   private var positionedOnce = false
   private var latestPresentation: Presentation?
+  private var displayedPlaying: Bool?
 
   private let onPlayPause: () -> Void
   private let onBack10: () -> Void
@@ -124,7 +125,9 @@ final class SubtitleOverlayController: NSObject {
 
   func update(_ presentation: Presentation) {
     latestPresentation = presentation
-    subtitleLabel.stringValue = presentation.subtitle
+    if subtitleLabel.stringValue != presentation.subtitle {
+      subtitleLabel.stringValue = presentation.subtitle
+    }
     if controlsVisible { applyControlState(presentation) }
   }
 
@@ -155,17 +158,25 @@ final class SubtitleOverlayController: NSObject {
   }
 
   private func applyControlState(_ presentation: Presentation) {
-    currentTime.stringValue = clock(presentation.position)
-    remainingTime.stringValue = remainingClock(
+    let current = clock(presentation.position)
+    let remaining = remainingClock(
       position: presentation.position, duration: presentation.duration)
-    slider.maxValue = max(1, presentation.duration)
+    if currentTime.stringValue != current { currentTime.stringValue = current }
+    if remainingTime.stringValue != remaining { remainingTime.stringValue = remaining }
+    let maximum = max(1, presentation.duration)
+    if slider.maxValue != maximum { slider.maxValue = maximum }
     if !slider.dragging {
-      slider.doubleValue = max(0, min(slider.maxValue, presentation.position))
+      let value = max(0, min(slider.maxValue, presentation.position))
+      if abs(slider.doubleValue - value) > 0.001 { slider.doubleValue = value }
     }
-    let symbol = presentation.playing ? "pause.fill" : "play.fill"
-    let description = presentation.playing ? "Pause" : "Play"
-    playPauseButton.image = NSImage(systemSymbolName: symbol, accessibilityDescription: description)
-    playPauseButton.setAccessibilityLabel(description)
+    if displayedPlaying != presentation.playing {
+      displayedPlaying = presentation.playing
+      let symbol = presentation.playing ? "pause.fill" : "play.fill"
+      let description = presentation.playing ? "Pause" : "Play"
+      playPauseButton.image = NSImage(
+        systemSymbolName: symbol, accessibilityDescription: description)
+      playPauseButton.setAccessibilityLabel(description)
+    }
   }
 
   private func configurePanel() {

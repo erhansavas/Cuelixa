@@ -3,7 +3,7 @@
   <h1>Cuelixa</h1>
   <p><strong>Local-first listening practice for Apple silicon Macs.</strong></p>
   <p>Play local lesson audio, resume where you left off, create synchronized subtitles on-device, and keep them visible in a compact floating overlay while you work.</p>
-  <p><strong>Current release: Cuelixa 0.6.65</strong></p>
+  <p><strong>Current release: Cuelixa 0.6.65 · Development: Cuelixa 0.6.66</strong></p>
 </div>
 
 ## Screenshots
@@ -22,10 +22,10 @@
     <td align="center"><sub>Create synchronized subtitles locally</sub></td>
   </tr>
   <tr>
-    <td colspan="2"><img src="docs/screenshots/cuelixa-lesson-complete.png" alt="Lesson completion prompt"></td>
+    <td colspan="2"><img src="docs/screenshots/cuelixa-playback-overlay.png" alt="Cuelixa subtitle-first playback overlay"></td>
   </tr>
   <tr>
-    <td colspan="2" align="center"><sub>Resume, replay, and track completed lessons</sub></td>
+    <td colspan="2" align="center"><sub>Keep synchronized subtitles visible while you work</sub></td>
   </tr>
 </table>
 
@@ -85,7 +85,7 @@ See [Privacy](docs/PRIVACY.md), [Security](SECURITY.md), and the [sandbox decisi
 
 ## Release integrity
 
-`SOURCE-SHA256SUMS.txt` covers every tracked release-tree file except the manifest itself. The release workflow verifies the source manifest, builds and tests the application, creates an ad-hoc-signed read-only DMG, verifies the mounted result, and publishes a matching SHA-256 checksum.
+`SOURCE-SHA256SUMS.txt` detects accidental source-tree drift; it is not an independent trust root. The release workflow verifies the manifest, builds and tests the application, creates an ad-hoc-signed read-only DMG, verifies the mounted result, publishes a matching SHA-256 checksum, and records GitHub build-provenance attestations for both artifacts.
 
 Ad-hoc signing is not Developer ID signing or notarization, and the project does not claim otherwise.
 

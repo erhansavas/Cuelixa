@@ -5,7 +5,7 @@ on:
   workflow_dispatch:
   push:
     tags:
-      - 'v0.6.65'
+      - 'v*'
 
 permissions:
   contents: read
@@ -21,17 +21,27 @@ jobs:
     timeout-minutes: 40
     permissions:
       contents: write
+      id-token: write
+      attestations: write
     env:
       DEVELOPER_DIR: /Applications/Xcode_26.6.app/Contents/Developer
-      VERSION: '0.6.65'
-      BUILD: '51'
-      DMG: 'Cuelixa-0.6.65-macOS-arm64.dmg'
     steps:
       - name: Checkout
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           persist-credentials: false
           fetch-depth: 0
+
+      - name: Resolve project release identity
+        shell: bash
+        run: |
+          set -euo pipefail
+          settings=$(xcodebuild -project CuelixaMac.xcodeproj -scheme Cuelixa -configuration Release -showBuildSettings)
+          version=$(printf '%s\n' "$settings" | awk '/ MARKETING_VERSION = / {print $3; exit}')
+          build=$(printf '%s\n' "$settings" | awk '/ CURRENT_PROJECT_VERSION = / {print $3; exit}')
+          test -n "$version"
+          test -n "$build"
+          printf 'VERSION=%s\nBUILD=%s\nDMG=Cuelixa-%s-macOS-arm64.dmg\n' "$version" "$build" "$version" >> "$GITHUB_ENV"
 
       - name: Verify source integrity and release identity
         shell: bash
@@ -41,8 +51,6 @@ jobs:
           test "$(uname -m)" = arm64
           xcodebuild -version | grep -Fx 'Xcode 26.6'
           xcodebuild -version | grep -Fx 'Build version 17F113'
-          grep -Fq 'MARKETING_VERSION = 0.6.65;' CuelixaMac.xcodeproj/project.pbxproj
-          grep -Fq 'CURRENT_PROJECT_VERSION = 51;' CuelixaMac.xcodeproj/project.pbxproj
           grep -Fq 'MACOSX_DEPLOYMENT_TARGET = 26.0;' CuelixaMac.xcodeproj/project.pbxproj
           if [ "${GITHUB_REF_TYPE:-}" = tag ]; then
             test "${GITHUB_REF_NAME}" = "v${VERSION}"
@@ -116,6 +124,14 @@ jobs:
           cd dist
           shasum -a 256 "$DMG" > "$DMG.sha256"
           shasum -a 256 -c "$DMG.sha256"
+
+      - name: Attest release artifacts
+        uses: actions/attest@508db95dd578ae2727ebd6217d5ba78e4fbda05d # v4.2.1
+        with:
+          subject-path: |
+            dist/${{ env.DMG }}
+            dist/${{ env.DMG }}.sha256
+          create-storage-record: false
 
       - name: Upload workflow artifact
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1

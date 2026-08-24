@@ -20,6 +20,7 @@ This repository publishes the Cuelixa source code and a free macOS Apple-silicon
 - ad-hoc code signature verifies with Hardened Runtime;
 - read-only DMG verifies and remounts successfully;
 - final DMG SHA-256 is generated and verified after packaging;
+- GitHub build-provenance attestations cover the frozen DMG and checksum;
 - license, notices, privacy/security documentation, and release notes match the published source revision.
 
 ## Free-distribution security posture
