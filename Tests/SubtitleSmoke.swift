@@ -31,7 +31,7 @@ struct SubtitleSmoke {
     precondition(SubtitleTimeline.activeCue(in: decoded, at: 4.5) == nil)
     precondition(SubtitleTimeline.activeCue(in: decoded, at: 8.25) == nil)
 
-    // A valid transcript may legitimately contain one final cue. r21 rejected it.
+    // A valid transcript may legitimately contain one final cue; legacy output rejected it.
     let single = [
       SubtitleCue(start: 0.0, end: 1.25, text: "One cue is still a valid subtitle file.")
     ]

@@ -1,6 +1,6 @@
 # Testing status — Cuelixa 0.6.66 (build 52)
 
-The unchanged R51 product baseline was previously tested on:
+The exact Cuelixa 0.6.66 source tree is qualified on:
 
 - macOS 26.6.2 (25G83)
 - Xcode 26.6 (17F113)
@@ -9,22 +9,13 @@ The unchanged R51 product baseline was previously tested on:
 
 ## Automated checks
 
-The 0.6.66 validator adds Swift Testing integration, a minimal isolated-root UI launch test, safe-import/path tests, batched SQLite reconciliation tests, and subtitle-timeline CPU, memory, storage, and wall-clock metrics to the existing Debug, Release, Analyze, SDK and AVFoundation gates. Compiler warnings remain errors and Swift complete strict-concurrency checking remains enabled.
+The supported validator and required `macos-arm64-release` GitHub check pass for the release tree. Coverage includes 19 Swift Testing unit/integration tests, two XCTest performance tests, the isolated-root UI launch test, Debug and Release builds, Analyze, SDK/API smokes, local AVFoundation playback, source-manifest verification, strict concurrency, and warnings-as-errors.
 
-Results for 0.6.66 are established only by a successful validator/CI run for the exact source revision. Historical R51 results are not automatically carried forward.
+The scanner fixture verifies 1,000 unchanged files with zero hashes and one database transaction. Performance tests record CPU, memory, storage and wall-clock metrics. The subtitle timeline fixture covers 10,000 cues.
 
-## Runtime testing
+## Qualification boundary
 
-Historical R51 manual testing covered:
-
-- local audio playback, pause/resume, exact seek, end-of-item handling, and library/player handoff;
-- resume and completion state;
-- synchronized subtitles and immediate playback of newly prepared subtitles;
-- subtitle preparation, cancellation, batch processing, and safe quit;
-- VoiceOver and keyboard navigation of the release interface;
-- Time Profiler, thermal-state, Allocations, and Leaks inspection.
-
-Those captured R51 runs showed no sustained Cuelixa CPU runaway or Cuelixa-owned memory leak. Manual runtime, accessibility and Instruments checks must be repeated before publishing 0.6.66. Power Profiler was not available for macOS in the tested Instruments release, so no unsupported Power Profiler claim is made.
+Only results produced by the current validator and GitHub check are release claims. The project does not convert historical manual observations into current performance, accessibility or leak claims.
 
 ## Release package
 

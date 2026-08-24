@@ -1,6 +1,6 @@
 # Changelog
 
-## 0.6.66
+## Cuelixa 0.6.66 (build 52)
 
 - Validate the legacy library root before selecting it and isolate filesystem paths per process.
 - Serialize imports, verify copied bytes, prevent destination races, and surface per-file failures.
@@ -8,17 +8,5 @@
 - Add Swift Testing integration, isolated UI launch coverage, database/import/path tests, and performance metrics.
 - Avoid redundant AppKit overlay assignments while preserving 10 Hz playback timing.
 - Derive release identity from Xcode metadata and attest release artifacts through GitHub Actions.
-
-## 0.6.65
-
-Initial public native macOS release.
-
-- Added a native SwiftUI and AppKit interface for Apple silicon Macs.
-- Added local audio library discovery with resume and completion tracking.
-- Added AVFoundation playback, Now Playing integration, media controls, and global shortcuts.
-- Added a movable subtitle-first playback overlay with synchronized seeking.
-- Added local subtitle caching and on-device subtitle preparation through Apple Speech.
-- Added cancellable single-worker batch preparation and safe shutdown behavior.
-- Added automated macOS build, test, source-integrity, DMG, and checksum verification.
 
 Distribution is free and ad-hoc signed. The release is not Apple Developer ID signed or notarized.
