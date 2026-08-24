@@ -40,7 +40,7 @@
 
 ## Install
 
-Cuelixa 0.6.66 is the current source version. When its downloadable build is published, obtain **`Cuelixa-0.6.66-macOS-arm64.dmg`** from [GitHub Releases](https://github.com/erhansavas/Cuelixa/releases) and verify that the app reports build 52. Older release assets remain historical and do not represent the current source tree.
+Download **`Cuelixa-0.6.66-macOS-arm64.dmg`** and its matching **`.sha256`** file from the [latest release](https://github.com/erhansavas/Cuelixa/releases/latest). The application must report **version 0.6.66, build 52**.
 
 1. Open the DMG.
 2. Drag **Cuelixa** to **Applications**.

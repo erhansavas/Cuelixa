@@ -1,4 +1,4 @@
-# macOS release procedure — 0.6.66+
+# Cuelixa 0.6.66 release procedure
 
 Cuelixa's public GitHub build is distributed without a paid Apple Developer ID certificate. The release therefore uses an ad-hoc-signed application inside a read-only DMG and does not claim Apple notarization or verified developer identity.
 
@@ -13,14 +13,13 @@ Cuelixa's public GitHub build is distributed without a paid Apple Developer ID c
 1. Freeze the source revision and verify version, build, deployment target, and `arm64` architecture.
 2. Verify the complete source manifest.
 3. Run the supported local validator and GitHub CI.
-4. Reconfirm manual runtime, accessibility, performance, thermal, and memory testing.
-5. Build Release with Hardened Runtime enabled.
-6. Apply an ad-hoc code signature and verify it with `codesign`.
-7. Create and verify a read-only DMG containing `Cuelixa.app` and an Applications symlink.
-8. Mount the DMG read-only and recheck the packaged architecture, metadata, and signature.
-9. Generate and verify SHA-256 only after the DMG is frozen.
-10. Generate GitHub build-provenance attestations for the frozen DMG and checksum.
-11. Publish the DMG and checksum together under the matching Git tag.
+4. Build Release with Hardened Runtime enabled.
+5. Apply an ad-hoc code signature and verify it with `codesign`.
+6. Create and verify a read-only DMG containing `Cuelixa.app` and an Applications symlink.
+7. Mount the DMG read-only and recheck the packaged architecture, metadata, and signature.
+8. Generate and verify SHA-256 only after the DMG is frozen.
+9. Generate GitHub build-provenance attestations for the frozen DMG and checksum.
+10. Publish `Cuelixa-0.6.66-macOS-arm64.dmg` and `Cuelixa-0.6.66-macOS-arm64.dmg.sha256` together under tag `v0.6.66`.
 
 ## First launch
 

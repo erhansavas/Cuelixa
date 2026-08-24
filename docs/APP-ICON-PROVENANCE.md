@@ -12,7 +12,7 @@ Its SHA-256 is:
 
 `cf456e5ee218e1db4b439b2110d992edec90546d1163e7c2f0a8de1a54d5539d`
 
-That checksum matches the earlier Cuelixa artwork integrity manifest retained with the project history. The same SVG source is present in the accepted Cuelixa 0.6.57 final-icon installer history and contains the established timed-caption mark using the canonical Cuelixa coral `#FF645A`.
+That checksum matches the retained Cuelixa artwork integrity manifest. The SVG contains the established timed-caption mark using the canonical Cuelixa coral `#FF645A`.
 
 The SVG is retained as provenance/design-source material. The released macOS application continues to ship the already-qualified raster AppIcon set; publication work does not silently regenerate or substitute those shipping icon bytes.
 
@@ -27,4 +27,3 @@ The SVG is retained as provenance/design-source material. The released macOS app
 ## Publication presentation
 
 README/project presentation should reference the vector master so the project icon remains reliably visible on GitHub without depending on the binary AppIcon transfer path. The AppIcon asset catalog remains the authoritative shipping resource used by Xcode.
-

@@ -2,13 +2,13 @@
 
 ## Authoritative product baseline
 
-The behavioral baseline is the verified Cuelixa 0.6.65-r6 Linux/GNOME source. Its supplied archive SHA-256 is `bbb094e2f04818a749e34bd235b53eb75950bdcb64c88e46ca48faa56cb22a96`; the supplied installer SHA-256 is `d991c477c8942184c4e20c55001d93679dd2f642ca1fa8c293e4deee937eb42e`. The native-port qualification history reverified both uploaded baseline artifacts before the overlay contract was frozen.
+The behavioral baseline is the verified legacy Linux/GNOME source. Its supplied archive SHA-256 is `bbb094e2f04818a749e34bd235b53eb75950bdcb64c88e46ca48faa56cb22a96`; the supplied installer SHA-256 is `d991c477c8942184c4e20c55001d93679dd2f642ca1fa8c293e4deee937eb42e`. The native-port qualification history reverified both baseline artifacts before the overlay contract was frozen.
 
 The macOS port preserves Cuelixa's purpose and interaction contract while using native macOS implementation primitives. Pixel imitation of GTK is not required; product semantics are.
 
 ## Core playback philosophy
 
-The r6 source establishes these behaviors:
+The legacy source establishes these behaviors:
 
 - Selecting Play starts audio and, when available, synchronized subtitles.
 - The library window hides when playback starts.

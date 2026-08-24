@@ -55,7 +55,7 @@ final class TranscriptCache: @unchecked Sendable {
   init(directories: AppDirectories = AppPaths.current) { self.directories = directories }
 
   /// Preferred durable transcript URL. Call verifiedSRTURL when opening an
-  /// existing transcript because r20/r21 cache-resident output is still supported.
+  /// existing transcript because the legacy cache-resident output is still supported.
   func srtURL(hash: String) -> URL {
     directories.transcripts.appendingPathComponent(hash + ".srt")
   }
@@ -75,7 +75,7 @@ final class TranscriptCache: @unchecked Sendable {
   func verified(hash: String) -> Bool { verifiedSRTURL(hash: hash) != nil }
 
   /// Returns the exact verified SRT that should be played. Durable output
-  /// wins; a valid r20/r21 cache pair remains readable non-destructively.
+  /// wins; a valid legacy cache pair remains readable non-destructively.
   func verifiedSRTURL(hash: String) -> URL? {
     let candidates = [
       Pair(srt: srtURL(hash: hash), manifest: manifestURL(hash: hash)),
