@@ -45,22 +45,28 @@ func sha256File(_ url: URL) -> String? {
   return hasher.finalize().map { String(format: "%02x", $0) }.joined()
 }
 
+/// Synchronous hashing for actors that must remain non-reentrant while still
+/// reacting to cancellation between bounded read chunks.
+func sha256FileCheckingCancellation(_ url: URL) throws -> String {
+  try Task.checkCancellation()
+  let input = try FileHandle(forReadingFrom: url)
+  defer { try? input.close() }
+  var hasher = SHA256()
+  while true {
+    try Task.checkCancellation()
+    guard let data = try input.read(upToCount: 1024 * 1024), !data.isEmpty else { break }
+    hasher.update(data: data)
+  }
+  try Task.checkCancellation()
+  return hasher.finalize().map { String(format: "%02x", $0) }.joined()
+}
+
 /// Hashes a potentially large lesson file without blocking MainActor and with
 /// cooperative cancellation between read chunks. The detached utility task is
 /// deliberately owned and awaited by its caller; it is not fire-and-forget.
 func sha256FileCancellable(_ url: URL) async throws -> String {
   let work = Task.detached(priority: .utility) {
-    try Task.checkCancellation()
-    let input = try FileHandle(forReadingFrom: url)
-    defer { try? input.close() }
-    var hasher = SHA256()
-    while true {
-      try Task.checkCancellation()
-      guard let data = try input.read(upToCount: 1024 * 1024), !data.isEmpty else { break }
-      hasher.update(data: data)
-    }
-    try Task.checkCancellation()
-    return hasher.finalize().map { String(format: "%02x", $0) }.joined()
+    try sha256FileCheckingCancellation(url)
   }
   return try await withTaskCancellationHandler {
     try await work.value
@@ -100,7 +106,7 @@ func copyAndSHA256File(from source: URL, to destination: URL) async throws -> St
   }
 }
 
-struct FileSignature: Equatable {
+struct FileSignature: Equatable, Sendable {
   let size: Int64
   let mtimeNS: Int64
   let ctimeNS: Int64
