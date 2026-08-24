@@ -1,69 +1,126 @@
 // SPDX-License-Identifier: Apache-2.0
+import Darwin
 import Foundation
 
-enum AppPaths {
-  /// New installs use the standard user Music directory. Existing `~/podcast`
-  /// libraries remain in place and are selected non-destructively when the new
-  /// default has not yet been created.
-  static let legacyLibrary: URL = {
-    let fm = FileManager.default
-    return fm.homeDirectoryForCurrentUser.appendingPathComponent(
-      "podcast", isDirectory: true)
-  }()
+enum LegacyLibraryIssue: String, Sendable, Equatable {
+  case symbolicLink
+  case notDirectory
+  case inaccessible
 
-  static let defaultLibrary: URL = {
-    let fm = FileManager.default
-    let music =
-      fm.urls(for: .musicDirectory, in: .userDomainMask).first
-      ?? fm.homeDirectoryForCurrentUser.appendingPathComponent("Music", isDirectory: true)
-    return music.appendingPathComponent("Cuelixa", isDirectory: true)
-  }()
+  var userMessage: String {
+    switch self {
+    case .symbolicLink:
+      "The legacy ~/podcast path is a symbolic link, so Cuelixa used ~/Music/Cuelixa instead."
+    case .notDirectory:
+      "The legacy ~/podcast path is not a folder, so Cuelixa used ~/Music/Cuelixa instead."
+    case .inaccessible:
+      "The legacy ~/podcast folder is not readable and writable, so Cuelixa used ~/Music/Cuelixa instead."
+    }
+  }
+}
 
-  static let library: URL = {
-    let fm = FileManager.default
-    // Preserve an existing legacy library for this process. Cuelixa intentionally
-    // does not move or delete user media; a clean install has no legacy folder
-    // and therefore starts in ~/Music/Cuelixa.
-    if fm.fileExists(atPath: legacyLibrary.path) { return legacyLibrary }
-    return defaultLibrary
-  }()
+/// Immutable process-wide filesystem identity. Resolving the library once avoids
+/// different subsystems making different migration decisions during one launch.
+struct AppDirectories: Sendable {
+  let library: URL
+  let legacyLibrary: URL
+  let defaultLibrary: URL
+  let support: URL
+  let cache: URL
+  let transcripts: URL
+  let legacySubtitles: URL
+  let staging: URL
+  let database: URL
+  let preferences: URL
+  let log: URL
+  let legacyLibraryIssue: LegacyLibraryIssue?
 
-  static let support: URL = {
-    let fm = FileManager.default
-    let base =
-      fm.urls(for: .applicationSupportDirectory, in: .userDomainMask).first
-      ?? fm.homeDirectoryForCurrentUser.appendingPathComponent(
-        "Library/Application Support", isDirectory: true)
-    return base.appendingPathComponent("Cuelixa", isDirectory: true)
-  }()
-
-  static let cache: URL = {
-    let fm = FileManager.default
-    let base =
-      fm.urls(for: .cachesDirectory, in: .userDomainMask).first
-      ?? fm.homeDirectoryForCurrentUser.appendingPathComponent(
-        "Library/Caches", isDirectory: true)
-    return base.appendingPathComponent("Cuelixa", isDirectory: true)
-  }()
-
-  /// Final subtitle output is expensive user-derived state, not disposable cache data.
-  /// New durable transcripts therefore publish under Application Support. The r20/r21
-  /// cache location remains readable through TranscriptCache so existing work is not lost.
-  static let transcripts = support.appendingPathComponent("Transcripts", isDirectory: true)
-  static let legacySubtitles = cache.appendingPathComponent("subtitles", isDirectory: true)
-  static let staging = cache.appendingPathComponent("staging", isDirectory: true)
-  static let database = support.appendingPathComponent("library.sqlite3")
-  static let preferences = support.appendingPathComponent("preferences.json")
-  static let log = support.appendingPathComponent("app.log")
-
-  static var usingLegacyLibrary: Bool {
+  var usingLegacyLibrary: Bool {
     library.standardizedFileURL == legacyLibrary.standardizedFileURL
   }
 
-  static func ensure() throws {
-    let fm = FileManager.default
+  func ensure(fileManager fm: FileManager = .default) throws {
     for url in [library, support, cache, transcripts, staging] {
       try fm.createDirectory(at: url, withIntermediateDirectories: true)
+      var isDirectory: ObjCBool = false
+      guard fm.fileExists(atPath: url.path, isDirectory: &isDirectory), isDirectory.boolValue,
+        fm.isReadableFile(atPath: url.path), fm.isWritableFile(atPath: url.path)
+      else {
+        throw CocoaError(.fileWriteInvalidFileName, userInfo: [NSFilePathErrorKey: url.path])
+      }
     }
   }
+
+  static func resolve(fileManager fm: FileManager = .default) -> AppDirectories {
+    resolve(home: fm.homeDirectoryForCurrentUser, fileManager: fm)
+  }
+
+  static func isolated(root: URL) -> AppDirectories {
+    let library = root.appendingPathComponent("Music/Cuelixa", isDirectory: true)
+    let support = root.appendingPathComponent("Application Support/Cuelixa", isDirectory: true)
+    let cache = root.appendingPathComponent("Caches/Cuelixa", isDirectory: true)
+    return AppDirectories(
+      library: library,
+      legacyLibrary: root.appendingPathComponent("podcast", isDirectory: true),
+      defaultLibrary: library, support: support, cache: cache,
+      transcripts: support.appendingPathComponent("Transcripts", isDirectory: true),
+      legacySubtitles: cache.appendingPathComponent("subtitles", isDirectory: true),
+      staging: cache.appendingPathComponent("staging", isDirectory: true),
+      database: support.appendingPathComponent("library.sqlite3"),
+      preferences: support.appendingPathComponent("preferences.json"),
+      log: support.appendingPathComponent("app.log"), legacyLibraryIssue: nil)
+  }
+
+  static func resolve(home: URL, fileManager fm: FileManager = .default) -> AppDirectories {
+    let legacy = home.appendingPathComponent("podcast", isDirectory: true)
+    let music = home.appendingPathComponent("Music", isDirectory: true)
+    let defaultLibrary = music.appendingPathComponent("Cuelixa", isDirectory: true)
+    let selection = validatedLegacyLibrary(legacy, fileManager: fm)
+    let library = selection.valid ? legacy : defaultLibrary
+
+    let applicationSupport = home.appendingPathComponent(
+      "Library/Application Support", isDirectory: true)
+    let caches = home.appendingPathComponent("Library/Caches", isDirectory: true)
+    let support = applicationSupport.appendingPathComponent("Cuelixa", isDirectory: true)
+    let cache = caches.appendingPathComponent("Cuelixa", isDirectory: true)
+    let transcripts = support.appendingPathComponent("Transcripts", isDirectory: true)
+    let legacySubtitles = cache.appendingPathComponent("subtitles", isDirectory: true)
+    let staging = cache.appendingPathComponent("staging", isDirectory: true)
+
+    return AppDirectories(
+      library: library, legacyLibrary: legacy, defaultLibrary: defaultLibrary,
+      support: support, cache: cache, transcripts: transcripts,
+      legacySubtitles: legacySubtitles, staging: staging,
+      database: support.appendingPathComponent("library.sqlite3"),
+      preferences: support.appendingPathComponent("preferences.json"),
+      log: support.appendingPathComponent("app.log"),
+      legacyLibraryIssue: selection.issue)
+  }
+
+  private static func validatedLegacyLibrary(
+    _ url: URL, fileManager fm: FileManager
+  ) -> (valid: Bool, issue: LegacyLibraryIssue?) {
+    var status = stat()
+    guard lstat(url.path, &status) == 0 else {
+      return errno == ENOENT ? (false, nil) : (false, .inaccessible)
+    }
+    let kind = status.st_mode & mode_t(S_IFMT)
+    if kind == mode_t(S_IFLNK) { return (false, .symbolicLink) }
+    guard kind == mode_t(S_IFDIR) else { return (false, .notDirectory) }
+    guard fm.isReadableFile(atPath: url.path), fm.isWritableFile(atPath: url.path) else {
+      return (false, .inaccessible)
+    }
+    return (true, nil)
+  }
+}
+
+enum AppPaths {
+  static let current: AppDirectories = {
+    #if DEBUG
+      if let root = ProcessInfo.processInfo.environment["CUELIXA_UI_TEST_ROOT"], !root.isEmpty {
+        return .isolated(root: URL(fileURLWithPath: root, isDirectory: true))
+      }
+    #endif
+    return .resolve()
+  }()
 }
