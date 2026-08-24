@@ -1,8 +1,6 @@
 // SPDX-License-Identifier: Apache-2.0
-import AVFoundation
 import Combine
 import Foundation
-import Speech
 
 @MainActor
 final class NativeTranscriber: ObservableObject {
@@ -31,16 +29,24 @@ final class NativeTranscriber: ObservableObject {
   }
 
   private let cache: TranscriptCache
+  private let stagingDirectory: URL
+  private let executor: any TranscriptionExecuting
   private var pending: [String: Job] = [:]
   private var queue: [Job] = []
   private var task: Task<Void, Never>?
   private var pacingTask: Task<Void, Never>?
   private var cancellingAll = false
-  private var analyzer: SpeechAnalyzer?
-  private var analyzerCancellationTask: Task<Void, Never>?
+  private var executorCancellationTask: Task<Void, Never>?
   private var activeJob: Job?
 
-  init(cache: TranscriptCache) { self.cache = cache }
+  init(
+    cache: TranscriptCache, stagingDirectory: URL = AppPaths.current.staging,
+    executor: any TranscriptionExecuting = AppleSpeechExecutor()
+  ) {
+    self.cache = cache
+    self.stagingDirectory = stagingDirectory
+    self.executor = executor
+  }
 
   /// Queue one consumer for a subtitle job. Requests sharing the same content
   /// hash share the same underlying Apple Speech transcription and receive
@@ -109,10 +115,8 @@ final class NativeTranscriber: ObservableObject {
       if pending[hash] === job { pending.removeValue(forKey: hash) }
       if activeJob === job {
         task?.cancel()
-        if analyzerCancellationTask == nil, let analyzer {
-          // SpeechAnalyzer cancellation is asynchronous. Track it explicitly so
-          // confirmed termination can wait for the real speech work to stop.
-          analyzerCancellationTask = Task { await analyzer.cancelAndFinishNow() }
+        if executorCancellationTask == nil {
+          executorCancellationTask = Task { await executor.cancelAndWait() }
         }
       }
     }
@@ -153,10 +157,10 @@ final class NativeTranscriber: ObservableObject {
   func cancelAllAndWait() async {
     let activeTask = task
     cancelAll()
-    let cancellationTask = analyzerCancellationTask
+    let cancellationTask = executorCancellationTask
     if let activeTask { await activeTask.value }
     if let cancellationTask { await cancellationTask.value }
-    analyzerCancellationTask = nil
+    executorCancellationTask = nil
   }
 
   // Compatibility wrapper for code that only needs a fire-and-callback request.
@@ -217,7 +221,6 @@ final class NativeTranscriber: ObservableObject {
       job.watchers.removeAll()
     }
 
-    analyzer = nil
     if activeJob === job { activeJob = nil }
     task = nil
     currentHash = nil
@@ -239,7 +242,6 @@ final class NativeTranscriber: ObservableObject {
       job.watchers.removeAll()
     }
 
-    analyzer = nil
     if activeJob === job { activeJob = nil }
     task = nil
     currentHash = nil
@@ -296,13 +298,13 @@ final class NativeTranscriber: ObservableObject {
     updateActivity()
   }
 
-  private func cancelAnalyzerIfNeeded(_ speechAnalyzer: SpeechAnalyzer?) async {
-    if let cancellationTask = analyzerCancellationTask {
+  private func cancelExecutorIfNeeded() async {
+    if let cancellationTask = executorCancellationTask {
       await cancellationTask.value
-      analyzerCancellationTask = nil
+      executorCancellationTask = nil
       return
     }
-    if let speechAnalyzer { await speechAnalyzer.cancelAndFinishNow() }
+    await executor.cancelAndWait()
   }
 
   private func notifyProgress(
@@ -310,72 +312,6 @@ final class NativeTranscriber: ObservableObject {
   ) {
     guard let job = pending[contentHash], job.id == jobID else { return }
     notifyProgress(job, message, percent)
-  }
-
-  /// Speech result consumption deliberately runs outside MainActor. Only the
-  /// Sendable Speech module, immutable scalar/value inputs, and a MainActor-
-  /// isolated Sendable callback cross into the child concurrency region. Mutable
-  /// Job state never leaves MainActor.
-  @concurrent
-  private static func collectCues(
-    from transcriber: SpeechTranscriber, duration trackDuration: Double,
-    progress: @escaping @MainActor @Sendable (Int?) -> Void
-  ) async throws -> [SubtitleCue] {
-    var fragments: [TimedTranscriptFragment] = []
-    var latestTime = 0.0
-    var hasPublishedProgress = false
-    var lastPublishedPercent: Int?
-
-    for try await result in transcriber.results {
-      try Task.checkCancellation()
-      guard result.isFinal else { continue }
-      let attributed = result.text
-      let fullText = String(attributed.characters)
-        .trimmingCharacters(in: .whitespacesAndNewlines)
-      guard !fullText.isEmpty else { continue }
-
-      var appendedTimedRun = false
-      for run in attributed.runs {
-        guard let timeRange = run.audioTimeRange else { continue }
-        let start = CMTimeGetSeconds(timeRange.start)
-        let duration = CMTimeGetSeconds(timeRange.duration)
-        guard start.isFinite, duration.isFinite, start >= 0, duration > 0 else { continue }
-        let text = String(attributed[run.range].characters)
-          .trimmingCharacters(in: .whitespacesAndNewlines)
-        guard !text.isEmpty else { continue }
-        let end = start + max(0.05, duration)
-        fragments.append(TimedTranscriptFragment(start: start, end: end, text: text))
-        latestTime = max(latestTime, end)
-        appendedTimedRun = true
-      }
-
-      // Requested audioTimeRange metadata should normally be present. Keep a
-      // conservative result-range fallback so a framework edge case cannot
-      // silently produce an empty transcript. SubtitleSegmenter still bounds
-      // the resulting visual cue sizes.
-      if !appendedTimedRun {
-        let start = max(0, CMTimeGetSeconds(result.range.start))
-        let duration = max(0, CMTimeGetSeconds(result.range.duration))
-        guard start.isFinite, duration.isFinite, duration > 0 else { continue }
-        let end = start + max(0.25, duration)
-        fragments.append(TimedTranscriptFragment(start: start, end: end, text: fullText))
-        latestTime = max(latestTime, end)
-      }
-
-      let percent: Int?
-      if trackDuration > 0 {
-        percent = min(99, max(1, Int((latestTime / trackDuration) * 100)))
-      } else {
-        percent = nil
-      }
-      if !hasPublishedProgress || lastPublishedPercent != percent {
-        hasPublishedProgress = true
-        lastPublishedPercent = percent
-        await progress(percent)
-      }
-    }
-
-    return SubtitleSegmenter.cues(from: fragments)
   }
 
   private func run(_ job: Job) async {
@@ -392,7 +328,7 @@ final class NativeTranscriber: ObservableObject {
 
       let source = URL(fileURLWithPath: track.path)
       let suffix = source.pathExtension.isEmpty ? "audio" : source.pathExtension
-      let snapshot = AppPaths.staging.appendingPathComponent(
+      let snapshot = stagingDirectory.appendingPathComponent(
         "\(UUID().uuidString).\(suffix)")
       defer { try? FileManager.default.removeItem(at: snapshot) }
       guard try await copyAndSHA256File(from: source, to: snapshot) == track.contentHash else {
@@ -400,59 +336,17 @@ final class NativeTranscriber: ObservableObject {
       }
       try Task.checkCancellation()
 
-      notifyProgress(job, "Checking Apple Speech assets…", nil)
-      guard SpeechTranscriber.isAvailable else {
-        throw CuelixaError.unsupportedLocale
-      }
-      guard
-        let locale = await SpeechTranscriber.supportedLocale(
-          equivalentTo: Locale(identifier: "en-US"))
-      else {
-        throw CuelixaError.unsupportedLocale
-      }
-
-      // Accurate finalized transcription with Apple's time-code attributes.
-      // SpeechTranscriber results may contain an entire phrase/passage; the
-      // per-run audioTimeRange metadata lets Cuelixa build subtitle-sized cues
-      // without guessing one timestamp for a large paragraph. Volatile/fast
-      // results, confidence and alternatives remain unnecessary for offline SRT.
-      let transcriber = SpeechTranscriber(
-        locale: locale,
-        transcriptionOptions: [],
-        reportingOptions: [],
-        attributeOptions: [.audioTimeRange])
-      if let request = try await AssetInventory.assetInstallationRequest(supporting: [transcriber])
-      {
-        notifyProgress(job, "Installing local speech model…", nil)
-        try await request.downloadAndInstall()
-      }
-      try Task.checkCancellation()
-
-      let audioFile = try AVAudioFile(forReading: snapshot)
-      let speechAnalyzer = SpeechAnalyzer(modules: [transcriber])
-      analyzer = speechAnalyzer
-
       let jobID = job.id
       let contentHash = track.contentHash
-      let trackDuration = track.duration
-      async let generatedCues = Self.collectCues(
-        from: transcriber, duration: trackDuration
-      ) { [weak self] percent in
+      let cues = try await executor.transcribe(
+        snapshot: snapshot, duration: track.duration
+      ) { [weak self] message, percent in
         self?.notifyProgress(
-          contentHash: contentHash, jobID: jobID, "Creating synchronized subtitles", percent)
+          contentHash: contentHash, jobID: jobID, message, percent)
       }
-
-      notifyProgress(job, "Preparing subtitles", nil)
-      if let lastSample = try await speechAnalyzer.analyzeSequence(from: audioFile) {
-        try await speechAnalyzer.finalizeAndFinish(through: lastSample)
-      } else {
-        await speechAnalyzer.cancelAndFinishNow()
-      }
-
-      let cues = try await generatedCues
       try Task.checkCancellation()
       guard pending[track.contentHash] === job, !job.watchers.isEmpty else {
-        await cancelAnalyzerIfNeeded(speechAnalyzer)
+        await cancelExecutorIfNeeded()
         finishCancelledJob(job)
         return
       }
@@ -463,16 +357,16 @@ final class NativeTranscriber: ObservableObject {
       notifyProgress(job, "Ready", 100)
       finish(job, result: .success(url))
     } catch is CancellationError {
-      await cancelAnalyzerIfNeeded(analyzer)
+      await cancelExecutorIfNeeded()
       finishCancelledJob(job)
     } catch {
-      await cancelAnalyzerIfNeeded(analyzer)
+      await cancelExecutorIfNeeded()
       finish(job, result: .failure(error))
     }
   }
 }
 
-enum CuelixaError: LocalizedError {
+enum CuelixaError: LocalizedError, Equatable {
   case unsupportedLocale
   case invalidTranscript
   case cancelled
