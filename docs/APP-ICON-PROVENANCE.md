@@ -1,6 +1,6 @@
 # Cuelixa App Icon Provenance Record
 
-The qualified macOS application preserves the approved `Assets.xcassets/AppIcon.appiconset` from the accepted native-port baseline byte-for-byte.
+The macOS application now uses the first-party `CuelixaMac/AppIcon.icon` Icon Composer document as its authoritative app-icon source. The prior raster `Assets.xcassets/AppIcon.appiconset` remains in the repository as historical/provenance material; Xcode selects the matching `AppIcon.icon` document for macOS 26 and later.
 
 ## Original vector master
 
@@ -14,7 +14,13 @@ Its SHA-256 is:
 
 That checksum matches the retained Cuelixa artwork integrity manifest. The SVG contains the established timed-caption mark using the canonical Cuelixa coral `#FF645A`.
 
-The SVG is retained as provenance/design-source material. The released macOS application continues to ship the already-qualified raster AppIcon set; publication work does not silently regenerate or substitute those shipping icon bytes.
+The SVG is retained as provenance/design-source material. Its caption mark was separated into three foreground SVG layers for Icon Composer; the system supplies the macOS mask and appearance treatment instead of receiving a pre-masked transparent canvas.
+
+## Icon Composer source
+
+`CuelixaMac/AppIcon.icon/icon.json` defines an opaque full-bleed gradient background and three ordered caption layers. The layers use automatic Liquid Glass treatment so Xcode can render the Default, Dark, Clear Light, Clear Dark, Tinted Light, and Tinted Dark macOS appearances from one source document. The foreground geometry stays inside the documented 1024-point Mac canvas safe area; no canvas mask or transparent border is baked into the source layers.
+
+The document is included in the application target's Resources phase and its basename matches `ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon`. Native Xcode compilation is the source of truth for the generated bundle resources. Runtime appearance/rendering checks on macOS 26 and macOS 27 require those native environments and remain recorded separately when they are unavailable to the audit host.
 
 ## Established from the distributed assets
 
@@ -26,4 +32,4 @@ The SVG is retained as provenance/design-source material. The released macOS app
 
 ## Publication presentation
 
-README/project presentation should reference the vector master so the project icon remains reliably visible on GitHub without depending on the binary AppIcon transfer path. The AppIcon asset catalog remains the authoritative shipping resource used by Xcode.
+README/project presentation should reference the vector master so the project icon remains reliably visible on GitHub without depending on the binary asset transfer path. The retained raster set is not modified by the Icon Composer migration.

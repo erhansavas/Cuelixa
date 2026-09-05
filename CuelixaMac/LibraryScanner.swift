@@ -247,6 +247,15 @@ actor LibraryScanner {
       if Task.isCancelled { return nil }
       guard Self.audioExtensions.contains(candidate.pathExtension.lowercased()) else { continue }
       let resolved = candidate.standardizedFileURL.resolvingSymlinksInPath()
+      // The extension filter is only a naming rule. A library directory can also
+      // contain FIFOs, devices, or sockets whose names end in `.mp3`; passing one
+      // to FileHandle for hashing can block before cooperative cancellation gets
+      // another chance. Resolve first so links to regular audio remain supported,
+      // then require the resolved entry to be a regular file.
+      guard
+        let values = try? resolved.resourceValues(forKeys: [.isRegularFileKey]),
+        values.isRegularFile == true
+      else { continue }
       var isDirectory: ObjCBool = false
       guard fm.fileExists(atPath: resolved.path, isDirectory: &isDirectory), !isDirectory.boolValue,
         canonicalPaths.insert(resolved.path).inserted

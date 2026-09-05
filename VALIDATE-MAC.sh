@@ -62,10 +62,27 @@ grep -Fq 'playPauseButton.contentTintColor = CuelixaDesign.identityAccentNS' "$o
 if grep -Fq 'NSVisualEffectView(frame: .zero)' "$overlay_source"; then fail 'Legacy custom visual-effect overlay returned'; fi
 pass 'NATIVE_GLASS_OVERLAY'
 
+# macOS 26+ app-icon source: keep one Icon Composer document authoritative and
+# require its package to be present in the target Resources phase.
+icon_document='CuelixaMac/AppIcon.icon'
+[[ -f "$icon_document/icon.json" ]] || fail 'Icon Composer document is missing icon.json'
+for icon_layer in \
+  "$icon_document/Assets/01-caption-line.svg" \
+  "$icon_document/Assets/02-active-cue.svg" \
+  "$icon_document/Assets/03-cue-continuation.svg"; do
+  [[ -f "$icon_layer" ]] || fail "Icon Composer layer is missing: $icon_layer"
+done
+grep -Fq 'path = AppIcon.icon;' CuelixaMac.xcodeproj/project.pbxproj \
+  || fail 'Icon Composer file reference missing'
+grep -Fq 'AppIcon.icon in Resources' CuelixaMac.xcodeproj/project.pbxproj \
+  || fail 'Icon Composer target Resources membership missing'
+pass 'ICON_COMPOSER_SOURCE_MEMBERSHIP'
+
 for asset_json in \
   CuelixaMac/Assets.xcassets/Contents.json \
   CuelixaMac/Assets.xcassets/AppIcon.appiconset/Contents.json \
-  CuelixaMac/Assets.xcassets/AccentColor.colorset/Contents.json; do
+  CuelixaMac/Assets.xcassets/AccentColor.colorset/Contents.json \
+  CuelixaMac/AppIcon.icon/icon.json; do
   ASSET_JSON_PATH="$asset_json" xcrun swift -e 'import Foundation; let path = ProcessInfo.processInfo.environment["ASSET_JSON_PATH"]!; let data = try Data(contentsOf: URL(fileURLWithPath: path)); _ = try JSONSerialization.jsonObject(with: data)' >/dev/null
 done
 pass 'ASSET_CATALOG_JSON_PARSE'

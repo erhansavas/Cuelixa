@@ -26,6 +26,7 @@
 		59F7A9042EB6837B8DF57D6C /* Utilities.swift in Sources */ = {isa = PBXBuildFile; fileRef = 047985C71AEB2DD0DE048BED /* Utilities.swift */; };
 		222F0DBFFE5EB23DCD3FD16F /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = 5B04B2273026590A440D27C9 /* Assets.xcassets */; };
 		7A1C4E90123456789ABCDEF0 /* PrivacyInfo.xcprivacy in Resources */ = {isa = PBXBuildFile; fileRef = 7A1C4E90123456789ABCDEE0 /* PrivacyInfo.xcprivacy */; };
+		C20660660000000000000032 /* AppIcon.icon in Resources */ = {isa = PBXBuildFile; fileRef = C20660660000000000000031 /* AppIcon.icon */; };
 		A20660660000000000000014 /* HardeningTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = A20660660000000000000013 /* HardeningTests.swift */; };
 		A20660660000000000000020 /* AppPaths.swift in Sources */ = {isa = PBXBuildFile; fileRef = 975BF69C7944E06D1E359AE7 /* AppPaths.swift */; };
 		A20660660000000000000021 /* Models.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1B0C8FAFE1B09544C5912233 /* Models.swift */; };
@@ -66,6 +67,7 @@
 		047985C71AEB2DD0DE048BED /* Utilities.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Utilities.swift; sourceTree = "<group>"; };
 		5B04B2273026590A440D27C9 /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
 		7A1C4E90123456789ABCDEE0 /* PrivacyInfo.xcprivacy */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = PrivacyInfo.xcprivacy; sourceTree = "<group>"; };
+		C20660660000000000000031 /* AppIcon.icon */ = {isa = PBXFileReference; lastKnownFileType = folder.iconcomposer.icon; path = AppIcon.icon; sourceTree = "<group>"; };
 		38A007151ABE87CC01A5B6E9 /* Cuelixa.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = Cuelixa.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		A20660660000000000000011 /* CuelixaTests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = CuelixaTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
 		A20660660000000000000013 /* HardeningTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HardeningTests.swift; sourceTree = "<group>"; };
@@ -102,6 +104,7 @@
 			900021011BD2E6182DB6AEAA /* TranscriptCache.swift */,
 			047985C71AEB2DD0DE048BED /* Utilities.swift */,
 			5B04B2273026590A440D27C9 /* Assets.xcassets */,
+			C20660660000000000000031 /* AppIcon.icon */,
 			7A1C4E90123456789ABCDEE0 /* PrivacyInfo.xcprivacy */,
 		); path = CuelixaMac; sourceTree = "<group>"; };
 		A20660660000000000000012 /* CuelixaTests */ = {isa = PBXGroup; children = (A20660660000000000000013 /* HardeningTests.swift */,); path = CuelixaTests; sourceTree = "<group>"; };
@@ -120,7 +123,7 @@
 /* End PBXProject section */
 
 /* Begin PBXResourcesBuildPhase section */
-		0189424A5A60FED329FA868E /* Resources */ = {isa = PBXResourcesBuildPhase; buildActionMask = 2147483647; files = (222F0DBFFE5EB23DCD3FD16F /* Assets.xcassets in Resources */, 7A1C4E90123456789ABCDEF0 /* PrivacyInfo.xcprivacy in Resources */,); runOnlyForDeploymentPostprocessing = 0; };
+		0189424A5A60FED329FA868E /* Resources */ = {isa = PBXResourcesBuildPhase; buildActionMask = 2147483647; files = (222F0DBFFE5EB23DCD3FD16F /* Assets.xcassets in Resources */, C20660660000000000000032 /* AppIcon.icon in Resources */, 7A1C4E90123456789ABCDEF0 /* PrivacyInfo.xcprivacy in Resources */,); runOnlyForDeploymentPostprocessing = 0; };
 		A20660660000000000000017 /* Resources */ = {isa = PBXResourcesBuildPhase; buildActionMask = 2147483647; files = (); runOnlyForDeploymentPostprocessing = 0; };
 		B20660660000000000000017 /* Resources */ = {isa = PBXResourcesBuildPhase; buildActionMask = 2147483647; files = (); runOnlyForDeploymentPostprocessing = 0; };
 /* End PBXResourcesBuildPhase section */
