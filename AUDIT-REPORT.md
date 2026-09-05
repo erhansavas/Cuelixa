@@ -14,6 +14,8 @@ The repository contains 39 commits across the inspected refs, ten pull requests 
 
 Baseline empirical evidence available in GitHub Actions is run [32741911775](https://github.com/erhansavas/Cuelixa/actions/runs/32741911775): macOS 26.5.2, Xcode 26.6 (17F113), Swift 6.3.3, Debug/Release build, Analyze, 19 Swift Testing tests, two XCTest performance tests, and one UI launch test passed. The release run [32742772157](https://github.com/erhansavas/Cuelixa/actions/runs/32742772157) also passed source-manifest, build, ad-hoc signing/Hardened Runtime, DMG, checksum, attestation, and publication gates. Those runs establish the baseline only; they do not establish exact macOS 26.6.2 execution or macOS 27 execution.
 
+Post-remediation branch CI run [33961431631](https://github.com/erhansavas/Cuelixa/actions/runs/33961431631) completed successfully on the arm64 `macos-26` runner: the log records macOS 26.6.2 (25G83), Xcode 26.6 (17F113), Swift 6.3.3, and the MacOSX26.5 SDK. The source manifest, smoke checks, 22 Swift Testing tests, two XCTest performance tests, one UI launch test, Debug/Release builds, and Analyze all passed. The validator intentionally skips its generated local AVPlayer runtime smoke in CI compatibility mode, and no Icon Composer appearance rendering was performed; macOS 27 and the six requested icon appearances therefore remain open.
+
 ## Verified findings and remediation
 
 | Category | Severity | Location | Evidence | Falsification check outcome | Fix applied or proposed | Residual risk |
@@ -39,7 +41,7 @@ No Critical or High application defect survived the verification and falsificati
 ## Needs Confirmation / needs from you
 
 1. Run the branch on a native macOS 26.6/Xcode 26.6 host and macOS 27 host. Confirm the Icon Composer package compiles, inspect the generated bundle’s icon metadata/resources, and render all six requested appearances at normal and small sizes over light/dark backgrounds. The current host has no Swift compiler, Xcode, or Apple renderer.
-2. Confirm the branch CI run after the draft PR. Baseline CI was successful on macOS 26.5.2; the exact macOS 26.6.2 SDK/runtime and macOS 27 remain unestablished.
+2. Run the branch on a macOS 27 host and render all six requested icon appearances (Default, Dark, Clear Light, Clear Dark, Tinted Light, and Tinted Dark) at normal and small sizes over light/dark backgrounds. The branch has now compiled and tested successfully on macOS 26.6.2, but CI does not provide a macOS 27 host or Icon Composer visual rendering.
 3. Review the repository’s GitHub Security, Dependabot, and code-scanning tabs directly (or provide connector access). The audit could not retrieve those private/connector-gated views, so no “zero alerts” conclusion is made.
 4. Resolve the existing open Dependabot PR #10 in favor of the reviewed single draft PR if the maintainer wants one canonical action update.
 
@@ -49,4 +51,4 @@ Unverified observations retained for confirmation rather than presented as findi
 
 Every finding in the table has a precise baseline claim, direct repository/API evidence, an active falsification check, and a smallest-scope remediation. Each applied code change was challenged for root-cause coverage, race/error behavior, compatibility with Cuelixa’s documented local-first purpose, and unnecessary complexity. Focused regression tests were added only for the three verified filesystem paths; no mirror tests were added for the action pin or icon metadata.
 
-Local checks completed on this host: `git diff --check`, `./Scripts/verify-source-manifest.sh`, and JSON parsing of the Icon Composer document. Native Swift/Xcode build and test execution is explicitly not certified locally. The icon’s source integration is verified in the repository; native compilation and macOS 26/27 visual rendering are open items above. No item that failed or lacked the Verification Mandate is presented as a verified final finding.
+Local checks completed on this host: `git diff --check`, `./Scripts/verify-source-manifest.sh`, and JSON parsing of the Icon Composer document. Native Swift/Xcode build and test execution is not available on this Linux host; branch CI independently compiled, tested, and analyzed the project on macOS 26.6.2. The icon’s source integration is verified in the repository, while macOS 27 and six-appearance visual rendering remain open items above. No item that failed or lacked the Verification Mandate is presented as a verified final finding.
