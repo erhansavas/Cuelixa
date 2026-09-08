@@ -46,10 +46,3 @@ jobs:
       - name: Validate application
         shell: bash
         run: ./VALIDATE-MAC.sh
-
-      - name: Diagnose failed native validation
-        if: failure()
-        shell: bash
-        run: |
-          system_profiler SPAudioDataType SPDisplaysDataType
-          log show --last 15m --style compact --info --predicate 'subsystem == "io.github.erhansavas.Cuelixa"'

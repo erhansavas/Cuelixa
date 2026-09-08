@@ -1,5 +1,8 @@
 <div align="center">
-  <img src="docs/assets/cuelixa-icon.svg" width="148" height="148" alt="Cuelixa app icon">
+  <picture>
+    <source media="(prefers-color-scheme: dark)" srcset="docs/assets/cuelixa-icon-dark.png">
+    <img src="docs/assets/cuelixa-icon.png" width="148" height="148" alt="Cuelixa app icon">
+  </picture>
   <h1>Cuelixa</h1>
   <p><strong>Local-first listening practice for Apple silicon Macs.</strong></p>
   <p>Play local lesson audio, resume where you left off, create synchronized subtitles on-device, and keep them visible in a compact floating overlay while you work.</p>
@@ -8,20 +11,21 @@
 
 ## Screenshots
 
+Cuelixa 0.6.66 on macOS 27, shown with sample lessons.
+
 <p align="center">
-  <img src="docs/screenshots/cuelixa-library.png" alt="Cuelixa lesson library in dark mode" width="100%">
+  <picture>
+    <source media="(prefers-color-scheme: dark)" srcset="docs/screenshots/cuelixa-library.png">
+    <img src="docs/screenshots/cuelixa-library-light.png" alt="Cuelixa lesson library with completion tracking and prepared subtitles" width="100%">
+  </picture>
+  <br>
+  <sub>Manage lessons in a native library that follows your Mac’s appearance</sub>
 </p>
 
 <p align="center">
   <img src="docs/screenshots/cuelixa-subtitle-options.png" alt="Cuelixa subtitle preparation options" width="100%">
   <br>
-  <sub>Choose how to start a lesson</sub>
-</p>
-
-<p align="center">
-  <img src="docs/screenshots/cuelixa-local-transcription-0.6.66.png" alt="Cuelixa creating synchronized subtitles locally" width="100%">
-  <br>
-  <sub>Create synchronized subtitles locally</sub>
+  <sub>Prepare subtitles on-device or start listening without them</sub>
 </p>
 
 <p align="center">
@@ -68,11 +72,16 @@ Same-basename `.srt` sidecars remain usable in place. Cuelixa does not rename so
 
 ## Build and test
 
-Cuelixa 0.6.66 uses Xcode 26.6 (`17F113`), Swift 6.3.3, macOS 26, and Apple silicon. Open `CuelixaMac.xcodeproj`, select **Cuelixa / My Mac**, and build.
+Cuelixa 0.6.66 targets Apple silicon and macOS 26 or later. The current audit build is validated on macOS 27 with Xcode 27 (`27A5252f`) and Swift 6.4. Open `CuelixaMac.xcodeproj`, select **Cuelixa / My Mac**, and build.
 
-The full local test sequence is available through:
+Run the full local test sequence with the installed Xcode 27 beta:
 
 ```sh
+DEVELOPER_DIR=/Applications/Xcode-beta.app/Contents/Developer \
+CUELIXA_MACOS_VERSION=27.0 \
+CUELIXA_XCODE_VERSION=27.0 \
+CUELIXA_XCODE_BUILD=27A5252f \
+CUELIXA_SWIFT_VERSION=6.4 \
 ./VALIDATE-MAC.sh
 ```
 

@@ -183,7 +183,6 @@ private struct LibraryContent: View {
         }
         .listStyle(.inset)
         .accessibilityLabel("Lessons")
-        .focusable()
         .focused($listHasFocus)
         .onChange(of: selection) { _, selection in
           if selection != nil { listHasFocus = true }

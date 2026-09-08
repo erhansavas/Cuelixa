@@ -33,4 +33,6 @@ The document is included in the application target's Resources phase and its bas
 
 ## Publication presentation
 
-README/project presentation should reference the vector master so the project icon remains reliably visible on GitHub without depending on the binary asset transfer path. The retained raster set is not modified by the Icon Composer migration.
+README presentation uses `docs/assets/cuelixa-icon.png` and `cuelixa-icon-dark.png`, exported directly from the authoritative Icon Composer document with Xcode 27's `ictool`. The 512×512 Default and Dark renditions use the macOS platform and design generation 27. GitHub selects the matching image through a `picture` element. The original vector master and raster set remain available as provenance; they are no longer presented as the current app icon.
+
+README screenshots were captured from the current macOS 27 application using an isolated library of generated silent WAV files and first-party sample captions. They show light/dark library appearance, the native missing-subtitle sheet, and actual sidecar playback. A temporary black backdrop behind the floating overlay keeps unrelated desktop content out of the capture. No lesson recording or personal library data is included.

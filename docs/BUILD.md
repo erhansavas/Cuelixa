@@ -6,8 +6,7 @@ These instructions apply to Cuelixa 0.6.66 (build 52).
 
 - Apple silicon Mac
 - macOS 26 or later
-- Xcode 26.6 (`17F113`)
-- Swift 6.3.3
+- Full Xcode; the current macOS 27 audit uses Xcode 27 beta 6 (`27A5252f`) and Swift 6.4
 
 The deployment target is macOS 26.0 and the shipping architecture is `arm64`.
 
@@ -17,17 +16,7 @@ Open `CuelixaMac.xcodeproj`, select **Cuelixa → My Mac**, then build the Debug
 
 ## Local checks
 
-Run the full build and test sequence on a supported Mac with:
-
-```sh
-./VALIDATE-MAC.sh
-```
-
-The script uses fresh DerivedData, checks the selected toolchain and project settings, builds Debug and Release, runs Analyze and deterministic smoke tests, and inspects the resulting `arm64` application binary.
-
-The validation build sets `CODE_SIGNING_ALLOWED=NO`; it does not change project signing settings or produce the downloadable release package.
-
-For the macOS 27 compatibility check with Xcode 27 beta 6 installed in Applications, select that toolchain for the command and declare the exact versions being tested:
+For the current macOS 27 validation with Xcode 27 beta 6 installed in Applications, select that toolchain and declare the exact versions being tested:
 
 ```sh
 DEVELOPER_DIR=/Applications/Xcode-beta.app/Contents/Developer \
@@ -37,6 +26,10 @@ CUELIXA_XCODE_BUILD=27A5252f \
 CUELIXA_SWIFT_VERSION=6.4 \
 ./VALIDATE-MAC.sh
 ```
+
+The script uses fresh DerivedData, checks the selected toolchain and project settings, builds Debug and Release, runs Analyze and deterministic smoke tests, and inspects the resulting `arm64` application binary. Without these overrides, it retains the release baseline of macOS 26.6.2, Xcode 26.6 (`17F113`), and Swift 6.3.3.
+
+The validation builds set `CODE_SIGNING_ALLOWED=NO`; native UI tests use ad-hoc signing. Validation does not change project signing settings or produce the downloadable release package.
 
 The native UI tests use temporary libraries and assert that their database is created there. The `DEBUG` compilation condition enables this isolation only in Debug builds. UI checks exercise keyboard navigation, search, completion persistence, sidecar playback, accessibility, and window resizing. The appearance test briefly switches the test Mac between light and dark mode and restores its original setting during teardown.
 
