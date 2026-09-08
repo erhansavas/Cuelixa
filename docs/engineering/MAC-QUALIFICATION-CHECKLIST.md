@@ -1,6 +1,6 @@
 # Cuelixa 0.7 — macOS testing checklist
 
-Current validation target: Apple silicon, macOS 27.0 (26A5425a), Xcode 27.0 (27A5252f), Swift 6.4. The minimum deployment target remains macOS 26.0; macOS 26 follow-up was skipped at the user's request.
+Current validation target: Apple silicon, macOS 27.0 (26A5425a), Xcode 27.0 (27A5252f), Swift 6.4. The app and test targets require macOS 27.0 or later.
 
 This checklist describes the broader qualification scope. Unchecked items are not claims of completed testing; see [Testing status](../QUALIFICATION.md) for recorded results and remaining limits.
 

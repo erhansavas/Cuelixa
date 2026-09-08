@@ -44,9 +44,9 @@ The native macOS implementation carries that contract without making the overlay
 
 The overlay is intentionally nonactivating so it can coexist with work in another app. It can join Spaces and fullscreen as an auxiliary surface. It contains no AVPlayer, no recurring polling timer, no SwiftUI hosting tree, and no process-global event monitor.
 
-## macOS 26 design discipline
+## Native macOS design discipline
 
-The main window relies on standard SwiftUI/AppKit controls so Xcode 26/macOS 26 supplies the current system materials, metrics, focus behavior, menus, toolbar grouping, and accessibility. Cuelixa's exact AppIcon coral `#FF645A` is reserved for app-owned identity emphasis; native structural surfaces remain system-owned.
+The main window relies on standard SwiftUI/AppKit controls so macOS 27 supplies the current system materials, metrics, focus behavior, menus, toolbar grouping, and accessibility. Cuelixa's exact AppIcon coral `#FF645A` is reserved for app-owned identity emphasis; native structural surfaces remain system-owned.
 
 The floating overlay uses a restrained system visual-effect surface only for transport legibility. When controls auto-hide, the subtitle text remains visually primary and no permanent player chrome remains.
 

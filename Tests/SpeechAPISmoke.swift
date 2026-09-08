@@ -4,7 +4,7 @@ import Foundation
 import Speech
 
 /// Compile-only target-SDK smoke. It deliberately does not download assets or
-/// transcribe user media. Xcode 26.6 must type-check the exact Speech/Foundation
+/// transcribe user media. The selected Xcode must type-check the exact Speech/Foundation
 /// surfaces used by NativeTranscriber before a candidate can be called buildable.
 func cuelixaSpeechAPISmoke(audioFile: AVAudioFile) async throws {
   _ = SpeechTranscriber.isAvailable

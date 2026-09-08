@@ -1,6 +1,6 @@
 # Cuelixa App Icon Provenance Record
 
-The macOS application now uses the first-party `CuelixaMac/AppIcon.icon` Icon Composer document as its authoritative app-icon source. The prior raster `Assets.xcassets/AppIcon.appiconset` remains in the repository as historical/provenance material; Xcode selects the matching `AppIcon.icon` document for macOS 26 and later.
+The macOS application now uses the first-party `CuelixaMac/AppIcon.icon` Icon Composer document as its authoritative app-icon source. The prior raster `Assets.xcassets/AppIcon.appiconset` remains in the repository as historical/provenance material; Xcode selects the matching `AppIcon.icon` document for the macOS 27 application.
 
 ## Original vector master
 
@@ -20,7 +20,7 @@ The SVG is retained as provenance/design-source material. Its caption mark was s
 
 `CuelixaMac/AppIcon.icon/icon.json` defines an opaque full-bleed gradient background and three ordered caption layers. The layers use automatic Liquid Glass treatment so Xcode can render the Default, Dark, Clear Light, Clear Dark, Tinted Light, and Tinted Dark macOS appearances from one source document. The foreground geometry stays inside the documented 1024-point Mac canvas safe area; no canvas mask or transparent border is baked into the source layers.
 
-The document is included in the application target's Resources phase and its basename matches `ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon`. Native Xcode compilation is the source of truth for the generated bundle resources. Runtime appearance/rendering checks on macOS 26 and macOS 27 require those native environments and remain recorded separately when they are unavailable to the audit host.
+The document is included in the application target's Resources phase and its basename matches `ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon`. Native Xcode compilation is the source of truth for the generated bundle resources. Runtime appearance/rendering qualification uses macOS 27. Earlier macOS 26 rendering checks are retained only as historical evidence in the audit report.
 
 ## Established from the distributed assets
 

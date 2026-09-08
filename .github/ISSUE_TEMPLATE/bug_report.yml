@@ -17,7 +17,7 @@ body:
     id: macos
     attributes:
       label: macOS version and Mac model
-      placeholder: macOS 26.6.2, Apple silicon
+      placeholder: macOS 27.0, Apple silicon
     validations:
       required: true
   - type: textarea

@@ -17,11 +17,11 @@ concurrency:
 jobs:
   macos-arm64-release:
     name: macos-arm64-release
-    runs-on: macos-26
+    runs-on: xcode-27
     timeout-minutes: 30
     env:
-      DEVELOPER_DIR: /Applications/Xcode_26.6.app/Contents/Developer
-      CUELIXA_CI_MODE: '1'
+      DEVELOPER_DIR: /Applications/Xcode_27_beta_6.app/Contents/Developer
+      CUELIXA_BUILD_ONLY: '1'
     steps:
       - name: Checkout
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
@@ -32,7 +32,7 @@ jobs:
         shell: bash
         run: ./Scripts/verify-source-manifest.sh
 
-      - name: Verify runner and stable toolchain
+      - name: Verify runner and Xcode 27 toolchain
         shell: bash
         run: |
           set -euo pipefail
@@ -40,9 +40,9 @@ jobs:
           sw_vers
           xcodebuild -version
           xcrun swiftc --version
-          xcodebuild -version | grep -Fx 'Xcode 26.6'
-          xcodebuild -version | grep -Fx 'Build version 17F113'
+          xcodebuild -version | grep -Fx 'Xcode 27.0'
+          xcodebuild -version | grep -Fx 'Build version 27A5252f'
 
-      - name: Validate application
+      - name: Compile tests, build, and analyze for macOS 27
         shell: bash
         run: ./VALIDATE-MAC.sh

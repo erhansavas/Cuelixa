@@ -41,13 +41,13 @@ Cuelixa on macOS 27, shown with sample lessons. The library preview follows your
 - **Keep playback within reach.** Use the floating subtitle overlay, keyboard shortcuts, and macOS Now Playing controls.
 - **Keep your library local.** No account, advertisements, analytics, or cloud backend.
 
-Requires an Apple silicon Mac and macOS 26 or later. Current validation covers macOS 27; see [testing status](docs/QUALIFICATION.md) for coverage and limitations.
+Requires an Apple silicon Mac and macOS 27 or later. Current validation covers macOS 27; see [testing status](docs/QUALIFICATION.md) for coverage and limitations.
 
 ## Install
 
-Version **0.7 (build 53)** is currently available from source; follow [Build and test](#build-and-test) below. Packaged downloads are available on [GitHub Releases](https://github.com/erhansavas/Cuelixa/releases/latest), where the latest published version is **0.6.66**.
+Download **Cuelixa 0.7 (build 53)** from [GitHub Releases](https://github.com/erhansavas/Cuelixa/releases/tag/v0.7). Choose `Cuelixa-0.7-macOS-arm64.dmg` and its matching `.sha256` checksum file. The app requires **macOS 27 or later** and **Apple silicon**.
 
-To install a packaged release, download its Apple silicon DMG and matching `.sha256` checksum file, then:
+To install:
 
 1. Open the DMG.
 2. Drag **Cuelixa** to **Applications**.
@@ -79,10 +79,6 @@ The current validation environment is macOS 27, Xcode 27 beta 6 (`27A5252f`), an
 
 ```sh
 DEVELOPER_DIR=/Applications/Xcode-beta.app/Contents/Developer \
-CUELIXA_MACOS_VERSION=27.0 \
-CUELIXA_XCODE_VERSION=27.0 \
-CUELIXA_XCODE_BUILD=27A5252f \
-CUELIXA_SWIFT_VERSION=6.4 \
 ./VALIDATE-MAC.sh
 ```
 
@@ -96,7 +92,7 @@ See [Privacy](docs/PRIVACY.md), [Security](SECURITY.md), and the [sandbox decisi
 
 ## Release integrity
 
-The release workflow verifies source checksums, builds and tests the application, and packages an ad-hoc-signed app in a read-only DMG. Published packages include a SHA-256 checksum and GitHub build-provenance attestations. `SOURCE-SHA256SUMS.txt` detects accidental source changes; it is not an independent trust root.
+The release workflow verifies source checksums, compiles the app and test targets, runs static analysis, and packages an ad-hoc-signed app in a read-only DMG. Runtime and UI qualification run on macOS 27 before release. Published packages include a SHA-256 checksum and GitHub build-provenance attestations. `SOURCE-SHA256SUMS.txt` detects accidental source changes; it is not an independent trust root.
 
 See [Release](docs/RELEASE.md) and [Publication](docs/PUBLICATION.md).
 
