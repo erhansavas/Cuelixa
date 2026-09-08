@@ -1,6 +1,6 @@
 # Testing status — Cuelixa 0.6.66 (build 52)
 
-The exact Cuelixa 0.6.66 source tree is qualified on:
+The Cuelixa 0.6.66 release baseline was qualified on:
 
 - macOS 26.6.2 (25G83)
 - Xcode 26.6 (17F113)
@@ -9,7 +9,9 @@ The exact Cuelixa 0.6.66 source tree is qualified on:
 
 ## Automated checks
 
-The supported validator and required `macos-arm64-release` GitHub check pass for the release tree. Coverage includes 19 Swift Testing unit/integration tests, two XCTest performance tests, the isolated-root UI launch test, Debug and Release builds, Analyze, SDK/API smokes, local AVFoundation playback, source-manifest verification, strict concurrency, and warnings-as-errors.
+The audit branch expands coverage to 37 Swift Testing unit/integration tests, two XCTest performance tests, and four native UI scenarios. The validator includes Debug and Release builds, Analyze, SDK/API smokes, local AVFoundation playback, source-manifest verification, strict concurrency, and warnings-as-errors.
+
+Full Xcode 27.0 (27A5252f) with Swift 6.4 is also installed for testing on macOS 27.0 (26A5425a). The native UI scenarios verify isolated libraries, search, completion persistence, keyboard playback, close/reopen, scoped accessibility checks, and resizing in light and dark appearances. Exact run evidence and remaining accessibility limitations are recorded in [AUDIT-REPORT.md](../AUDIT-REPORT.md).
 
 The scanner fixture verifies 1,000 unchanged files with zero hashes and one database transaction. Performance tests record CPU, memory, storage and wall-clock metrics. The subtitle timeline fixture covers 10,000 cues.
 

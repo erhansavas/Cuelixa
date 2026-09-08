@@ -333,7 +333,8 @@ if [[ -n "$warnings" ]]; then
     warning_payload="${warning_line#*warning: }"
     if [[ "${appintents_absence_verified:-0}" == "1" \
       && "$warning_line" == *appintentsmetadataprocessor* \
-      && "$warning_payload" == 'Metadata extraction skipped. No AppIntents.framework dependency found.' ]]; then
+      && ( "$warning_payload" == 'Metadata extraction skipped. No AppIntents.framework dependency found.' \
+        || "$warning_payload" == 'Metadata extraction skipped, no AppIntents.framework dependency found' ) ]]; then
       print -- "BENIGN_XCODE_TOOL_WARNING_ALLOWED: $warning_line"
       continue
     fi
@@ -370,6 +371,10 @@ print '=== Release binary ==='
 file "$BIN"
 [[ "$(lipo -archs "$BIN")" == "arm64" ]] || fail 'Release binary is not arm64-only'
 otool -l "$BIN" | awk '/LC_BUILD_VERSION/{show=1; next} show && /minos/{print; show=0}'
+if strings "$BIN" | grep -F 'CUELIXA_UI_TEST_ROOT'; then
+  fail 'UI test-root override is present in the Release executable'
+fi
+pass 'RELEASE_TEST_ISOLATION_DISABLED'
 
 print '=== Nested native payload ==='
 find "$APP" -type f -print0 | while IFS= read -r -d '' candidate; do
@@ -401,9 +406,8 @@ if grep -qE 'scheduledTimer\(withTimeInterval:.*repeats: true|Timer\.publish|CAD
 fi
 echo "OVERLAY_PLAYBACK_CONTRACT=PASS"
 
-# App identity: the catalog accent and forced SwiftUI tint must stay aligned
-# with the approved AppIcon coral (#FF645A), avoiding the unrelated blue system
-# accent in Cuelixa-owned controls/navigation emphasis.
+# Retain coral identity emphasis. The catalog uses a deeper coral so native
+# selection highlights have sufficient contrast with their white text.
 grep -q 'ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor' CuelixaMac.xcodeproj/project.pbxproj || fail 'AccentColor build setting missing'
 grep -q 'CuelixaDesign.identityAccent' CuelixaMac/MainView.swift || fail 'identity tint missing from main view'
 [[ -f CuelixaMac/Assets.xcassets/AccentColor.colorset/Contents.json ]] || fail 'AccentColor asset missing'

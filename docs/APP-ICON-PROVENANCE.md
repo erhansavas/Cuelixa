@@ -28,6 +28,7 @@ The document is included in the application target's Resources phase and its bas
 - The qualified macOS application adds no Apple artwork and ships no extracted SF Symbol artwork.
 - Pixel inspection of the approved 1024 px raster identifies its dominant exact coral payload as sRGB `#FF645A` (`255, 100, 90`).
 - The qualified macOS application uses that value only as Cuelixa's restrained semantic identity accent.
+- The native control accent asset uses deeper coral `#BD332B` so white selection text has sufficient contrast. The icon artwork and explicit identity accent remain `#FF645A`.
 - The qualified macOS application does not redraw, recolor, or otherwise mutate the frozen raster icon set during repository/publication preparation.
 
 ## Publication presentation
