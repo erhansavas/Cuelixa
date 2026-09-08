@@ -66,7 +66,8 @@ final class CuelixaLaunchTests: XCTestCase {
     app.staticTexts["Playback Lesson"].click()
     app.typeKey(.space, modifierFlags: [])
     XCTAssertTrue(
-      app.staticTexts["Cuelixa UI subtitle fixture."].waitForExistence(timeout: 15))
+      app.staticTexts["Cuelixa UI subtitle fixture."].waitForExistence(timeout: 15),
+      app.debugDescription)
     try auditAccessibility(app)
     let screenshot = XCTAttachment(
       screenshot: app.staticTexts["Cuelixa UI subtitle fixture."].screenshot())
@@ -81,7 +82,8 @@ final class CuelixaLaunchTests: XCTestCase {
     app.staticTexts["Playback Lesson"].click()
     app.typeKey(.return, modifierFlags: [])
     XCTAssertTrue(
-      app.staticTexts["Cuelixa UI subtitle fixture."].waitForExistence(timeout: 15))
+      app.staticTexts["Cuelixa UI subtitle fixture."].waitForExistence(timeout: 15),
+      app.debugDescription)
     app.typeKey("q", modifierFlags: [.control, .option])
     XCTAssertTrue(play.waitForExistence(timeout: 10))
   }
@@ -153,13 +155,22 @@ final class CuelixaLaunchTests: XCTestCase {
     ]) { issue in
       // SwiftUI exposes unnamed, noninteractive layout groups around labelled children.
       // Audit their controls normally; a container does not need a duplicate description.
-      guard issue.auditType == .sufficientElementDescription,
+      if issue.auditType == .sufficientElementDescription,
         let element = issue.element
-      else { return false }
-      // MediaPlayer also exposes a system Touch Bar container on Macs without a Touch Bar.
-      if element.elementType == .touchBar { return true }
-      guard element.elementType == .group, !element.isEnabled else { return false }
-      return element.children(matching: .any).count > 0
+      {
+        // MediaPlayer also exposes a system Touch Bar container on Macs without a Touch Bar.
+        if element.elementType == .touchBar { return true }
+        if element.elementType == .group, !element.isEnabled,
+          element.children(matching: .any).count > 0
+        {
+          return true
+        }
+      }
+      // Include the failing native hierarchy in hosted CI logs, not just the audit category.
+      print("Accessibility audit failed: \(issue.detailedDescription)")
+      print(issue.element?.debugDescription ?? "No audit element")
+      print(app.debugDescription)
+      return false
     }
   }
 
