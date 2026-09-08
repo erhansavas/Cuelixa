@@ -33,14 +33,20 @@ final class LibraryDatabase: @unchecked Sendable {
   private(set) var initializationError: String?
 
   init(url: URL = AppPaths.current.database) {
-    self.url = url
+    let directory = url.deletingLastPathComponent()
+    let canonicalDirectory: URL
     do {
-      try FileManager.default.createDirectory(
-        at: url.deletingLastPathComponent(), withIntermediateDirectories: true)
+      try LocalFileAccess.ensurePrivateDirectory(directory)
+      canonicalDirectory = try LocalFileAccess.canonicalDirectoryURL(directory)
     } catch {
+      self.url = url
       initializationError = error.localizedDescription
       return
     }
+    // SQLite's NOFOLLOW checks ancestors too. Canonicalize the validated
+    // directory using POSIX realpath: Foundation shortens /private/var back to
+    // the /var symlink. Retain the filename so database links remain rejected.
+    self.url = canonicalDirectory.appendingPathComponent(url.lastPathComponent)
     let initialized = queue.sync {
       guard let db = openConnection() else { return false }
       if !createSchema(db) {
@@ -61,7 +67,9 @@ final class LibraryDatabase: @unchecked Sendable {
     var raw: OpaquePointer?
     guard
       sqlite3_open_v2(
-        url.path, &raw, SQLITE_OPEN_CREATE | SQLITE_OPEN_READWRITE | SQLITE_OPEN_FULLMUTEX, nil)
+        url.path, &raw,
+        SQLITE_OPEN_CREATE | SQLITE_OPEN_READWRITE | SQLITE_OPEN_FULLMUTEX | SQLITE_OPEN_NOFOLLOW,
+        nil)
         == SQLITE_OK, let db = raw
     else {
       if let raw { sqlite3_close(raw) }
@@ -464,7 +472,6 @@ final class LibraryDatabase: @unchecked Sendable {
     queue.sync {
       withDB { db -> [Track] in
         var whereParts = ["t.missing = 0"]
-        var params = [String]()
         switch section {
         case .all: break
         case .continue: whereParts += ["t.completed = 0", "t.position>=10"]
@@ -472,10 +479,6 @@ final class LibraryDatabase: @unchecked Sendable {
         case .completed: whereParts += ["t.completed = 1"]
         }
         let q = query.trimmingCharacters(in: .whitespacesAndNewlines)
-        if !q.isEmpty {
-          whereParts.append("LOWER(t.title) LIKE ?")
-          params.append("%\(q.lowercased())%")
-        }
         let sql = """
           SELECT t.content_hash,t.title,t.duration,t.position,t.completed,t.completed_at,t.last_played_at,t.added_at,t.last_seen_at,t.missing,
             COALESCE((SELECT MIN(path) FROM files f WHERE f.content_hash = t.content_hash),'')
@@ -486,11 +489,13 @@ final class LibraryDatabase: @unchecked Sendable {
           let statement = rawStatement
         else { return [] }
         defer { sqlite3_finalize(statement) }
-        for (i, p) in params.enumerated() {
-          sqlite3_bind_text(statement, Int32(i + 1), p, -1, sqliteTransientDestructor())
-        }
         var out: [Track] = []
-        while sqlite3_step(statement) == SQLITE_ROW { out.append(readTrack(statement)) }
+        while sqlite3_step(statement) == SQLITE_ROW {
+          let track = readTrack(statement)
+          // SQLite LOWER/LIKE fold ASCII only and treat '%'/'_' as wildcards.
+          // Finder-style search handles Unicode titles and literal input.
+          if q.isEmpty || track.title.localizedStandardContains(q) { out.append(track) }
+        }
         switch section {
         case .continue:
           out.sort {

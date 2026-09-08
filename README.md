@@ -1,27 +1,31 @@
 <div align="center">
-  <img src="docs/assets/cuelixa-icon.svg" width="148" height="148" alt="Cuelixa app icon">
+  <picture>
+    <source media="(prefers-color-scheme: dark)" srcset="docs/assets/cuelixa-icon-dark.png">
+    <img src="docs/assets/cuelixa-icon.png" width="148" height="148" alt="Cuelixa app icon">
+  </picture>
   <h1>Cuelixa</h1>
   <p><strong>Local-first listening practice for Apple silicon Macs.</strong></p>
-  <p>Play local lesson audio, resume where you left off, create synchronized subtitles on-device, and keep them visible in a compact floating overlay while you work.</p>
-  <p><strong>Current version: Cuelixa 0.6.66 (build 52)</strong></p>
+  <p>Listen to local lesson audio, resume where you left off, and follow synchronized subtitles in a compact floating overlay.</p>
+  <p><strong>Cuelixa 0.7 · Build 53</strong></p>
 </div>
 
 ## Screenshots
 
+Cuelixa on macOS 27, shown with sample lessons. The library preview follows your light or dark appearance.
+
 <p align="center">
-  <img src="docs/screenshots/cuelixa-library.png" alt="Cuelixa lesson library in dark mode" width="100%">
+  <picture>
+    <source media="(prefers-color-scheme: dark)" srcset="docs/screenshots/cuelixa-library.png">
+    <img src="docs/screenshots/cuelixa-library-light.png" alt="Cuelixa lesson library with completion tracking and prepared subtitles" width="100%">
+  </picture>
+  <br>
+  <sub>Manage lessons in a native library that follows your Mac’s appearance</sub>
 </p>
 
 <p align="center">
   <img src="docs/screenshots/cuelixa-subtitle-options.png" alt="Cuelixa subtitle preparation options" width="100%">
   <br>
-  <sub>Choose how to start a lesson</sub>
-</p>
-
-<p align="center">
-  <img src="docs/screenshots/cuelixa-local-transcription-0.6.66.png" alt="Cuelixa creating synchronized subtitles locally" width="100%">
-  <br>
-  <sub>Create synchronized subtitles locally</sub>
+  <sub>Prepare subtitles on-device or start listening without them</sub>
 </p>
 
 <p align="center">
@@ -30,17 +34,20 @@
   <sub>Keep synchronized subtitles visible while you work</sub>
 </p>
 
-## Highlights
+## Features
 
-- Native macOS application built with SwiftUI, AppKit, AVFoundation, Speech, and MediaPlayer.
-- Designed for Apple silicon (`arm64`) and macOS 26 or later.
-- Local-first: no account, advertisements, analytics, telemetry, cloud backend, updater, or bundled third-party runtime.
-- Resume and completion tracking, synchronized subtitles, local transcript cache, Now Playing integration, global shortcuts, and filesystem observation.
-- On-device subtitle preparation with cancellation and batch processing.
+- **Organize your listening.** Browse and search local lessons, track completion, and resume from your saved position.
+- **Follow along with subtitles.** Use existing SRT files or prepare subtitles on-device, individually or in a batch.
+- **Keep playback within reach.** Use the floating subtitle overlay, keyboard shortcuts, and macOS Now Playing controls.
+- **Keep your library local.** No account, advertisements, analytics, or cloud backend.
+
+Requires an Apple silicon Mac and macOS 27 or later. Current validation covers macOS 27; see [testing status](docs/QUALIFICATION.md) for coverage and limitations.
 
 ## Install
 
-Download **`Cuelixa-0.6.66-macOS-arm64.dmg`** and its matching **`.sha256`** file from the [latest release](https://github.com/erhansavas/Cuelixa/releases/latest). The application must report **version 0.6.66, build 52**.
+Download **Cuelixa 0.7 (build 53)** from [GitHub Releases](https://github.com/erhansavas/Cuelixa/releases/tag/v0.7). Choose `Cuelixa-0.7-macOS-arm64.dmg` and its matching `.sha256` checksum file. The app requires **macOS 27 or later** and **Apple silicon**.
+
+To install:
 
 1. Open the DMG.
 2. Drag **Cuelixa** to **Applications**.
@@ -48,9 +55,7 @@ Download **`Cuelixa-0.6.66-macOS-arm64.dmg`** and its matching **`.sha256`** fil
 
 ### First launch
 
-Cuelixa uses a free distribution model without a paid Apple Developer ID certificate, so the downloaded build is not notarized by Apple. If macOS blocks the first launch, try to open Cuelixa once, then go to **System Settings → Privacy & Security → Open Anyway** and confirm **Open**.
-
-No Terminal command, Gatekeeper disablement, or SIP change is required or recommended.
+Public builds are ad-hoc signed and are not notarized by Apple. If macOS blocks the first launch, try to open Cuelixa once, then go to **System Settings → Privacy & Security → Open Anyway** and confirm **Open**. No Terminal command or change to Gatekeeper or System Integrity Protection is required.
 
 ## Library and data
 
@@ -68,27 +73,26 @@ Same-basename `.srt` sidecars remain usable in place. Cuelixa does not rename so
 
 ## Build and test
 
-Cuelixa 0.6.66 uses Xcode 26.6 (`17F113`), Swift 6.3.3, macOS 26, and Apple silicon. Open `CuelixaMac.xcodeproj`, select **Cuelixa / My Mac**, and build.
+Cuelixa uses SwiftUI, AppKit, AVFoundation, and Apple Speech, with no third-party package dependencies. Open `CuelixaMac.xcodeproj` in full Xcode, select **Cuelixa / My Mac**, and build.
 
-The full local test sequence is available through:
+The current validation environment is macOS 27, Xcode 27 beta 6 (`27A5252f`), and Swift 6.4. Run the complete checks with:
 
 ```sh
+DEVELOPER_DIR=/Applications/Xcode-beta.app/Contents/Developer \
 ./VALIDATE-MAC.sh
 ```
 
-See [Build](docs/BUILD.md) and [Testing](docs/QUALIFICATION.md).
+The validator runs unit, integration, performance, and native UI tests, clean Debug and Release builds, static analysis, playback checks, and source-integrity checks. See [build instructions](docs/BUILD.md) and [testing status](docs/QUALIFICATION.md) for details.
 
 ## Privacy and security
 
-Cuelixa contains no application-managed network service, analytics, tracking, advertising, helper daemon, Full Disk Access requirement, Accessibility permission requirement, or Input Monitoring requirement. Apple Speech may ask macOS to obtain Apple-managed on-device speech assets when needed.
+Audio, listening progress, and prepared subtitles remain on your Mac. Apple Speech may ask macOS to download on-device speech assets when needed. Cuelixa does not require Full Disk Access, Accessibility, or Input Monitoring permission.
 
 See [Privacy](docs/PRIVACY.md), [Security](SECURITY.md), and the [sandbox decision record](docs/SANDBOX-DECISION.md).
 
 ## Release integrity
 
-`SOURCE-SHA256SUMS.txt` detects accidental source-tree drift; it is not an independent trust root. The release workflow verifies the manifest, builds and tests the application, creates an ad-hoc-signed read-only DMG, verifies the mounted result, publishes a matching SHA-256 checksum, and records GitHub build-provenance attestations for both artifacts.
-
-Ad-hoc signing is not Developer ID signing or notarization, and the project does not claim otherwise.
+The release workflow verifies source checksums, compiles the app and test targets, runs static analysis, and packages an ad-hoc-signed app in a read-only DMG. Runtime and UI qualification run on macOS 27 before release. Published packages include a SHA-256 checksum and GitHub build-provenance attestations. `SOURCE-SHA256SUMS.txt` detects accidental source changes; it is not an independent trust root.
 
 See [Release](docs/RELEASE.md) and [Publication](docs/PUBLICATION.md).
 

@@ -2,7 +2,7 @@
 
 ## Supported version
 
-Security fixes target Cuelixa `0.6.66` (build `52`) on supported macOS releases.
+Security fixes target Cuelixa `0.7` (build `53`) on supported macOS releases.
 
 ## Reporting a vulnerability
 

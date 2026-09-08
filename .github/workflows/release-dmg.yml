@@ -17,14 +17,14 @@ concurrency:
 jobs:
   release-dmg:
     name: release-macos-arm64-dmg
-    runs-on: macos-26
+    runs-on: xcode-27
     timeout-minutes: 40
     permissions:
       contents: write
       id-token: write
       attestations: write
     env:
-      DEVELOPER_DIR: /Applications/Xcode_26.6.app/Contents/Developer
+      DEVELOPER_DIR: /Applications/Xcode_27_beta_6.app/Contents/Developer
     steps:
       - name: Checkout
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
@@ -49,17 +49,17 @@ jobs:
           set -euo pipefail
           ./Scripts/verify-source-manifest.sh
           test "$(uname -m)" = arm64
-          xcodebuild -version | grep -Fx 'Xcode 26.6'
-          xcodebuild -version | grep -Fx 'Build version 17F113'
-          grep -Fq 'MACOSX_DEPLOYMENT_TARGET = 26.0;' CuelixaMac.xcodeproj/project.pbxproj
+          xcodebuild -version | grep -Fx 'Xcode 27.0'
+          xcodebuild -version | grep -Fx 'Build version 27A5252f'
+          grep -Fq 'MACOSX_DEPLOYMENT_TARGET = 27.0;' CuelixaMac.xcodeproj/project.pbxproj
           if [ "${GITHUB_REF_TYPE:-}" = tag ]; then
             test "${GITHUB_REF_NAME}" = "v${VERSION}"
           fi
 
-      - name: Run CI qualification gate
+      - name: Compile tests, build, and analyze for macOS 27
         shell: bash
         env:
-          CUELIXA_CI_MODE: '1'
+          CUELIXA_BUILD_ONLY: '1'
         run: ./VALIDATE-MAC.sh
 
       - name: Build, ad-hoc sign, and verify app
@@ -74,13 +74,14 @@ jobs:
             -scheme Cuelixa \
             -configuration Release \
             -derivedDataPath "$derived_data" \
-            -destination 'platform=macOS,arch=arm64' \
+            -destination 'generic/platform=macOS' \
             CODE_SIGNING_ALLOWED=NO \
             build
           app="$derived_data/Build/Products/Release/Cuelixa.app"
           test -d "$app"
           test "$(/usr/libexec/PlistBuddy -c 'Print :CFBundleShortVersionString' "$app/Contents/Info.plist")" = "$VERSION"
           test "$(/usr/libexec/PlistBuddy -c 'Print :CFBundleVersion' "$app/Contents/Info.plist")" = "$BUILD"
+          test "$(/usr/libexec/PlistBuddy -c 'Print :LSMinimumSystemVersion' "$app/Contents/Info.plist")" = 27.0
           test "$(/usr/libexec/PlistBuddy -c 'Print :CFBundleIdentifier' "$app/Contents/Info.plist")" = io.github.erhansavas.Cuelixa
           test "$(lipo -archs "$app/Contents/MacOS/Cuelixa")" = arm64
           codesign --force --sign - --timestamp=none --options runtime "$app"
@@ -104,17 +105,24 @@ jobs:
           ln -s /Applications "$stage/Applications"
           hdiutil create -quiet -volname Cuelixa -srcfolder "$stage" -format UDZO -ov "dist/$DMG"
           hdiutil verify "dist/$DMG"
-          attach_output=$(hdiutil attach -readonly -nobrowse -mountpoint "$mount_point" "dist/$DMG")
-          device=$(printf '%s\n' "$attach_output" | awk '/Apple_HFS|Apple_APFS/ {print $1; exit}')
-          test -n "$device"
-          trap 'hdiutil detach "$device" >/dev/null 2>&1 || true' EXIT
+          packaging_host_major=$(sw_vers -productVersion | cut -d. -f1)
+          if [ "$packaging_host_major" -ge 27 ]; then
+            diskutil image attach --readOnly --nobrowse --mountPoint "$mount_point" "dist/$DMG"
+          else
+            # The hosted Xcode 27 image currently uses a macOS 26 build host.
+            hdiutil attach -readonly -nobrowse -mountpoint "$mount_point" "dist/$DMG"
+          fi
+          trap 'diskutil eject "$mount_point" >/dev/null 2>&1 || true' EXIT
           mounted_app="$mount_point/Cuelixa.app"
           test -d "$mounted_app"
           test -L "$mount_point/Applications"
           test "$(lipo -archs "$mounted_app/Contents/MacOS/Cuelixa")" = arm64
           test "$(/usr/libexec/PlistBuddy -c 'Print :CFBundleIdentifier' "$mounted_app/Contents/Info.plist")" = io.github.erhansavas.Cuelixa
+          test "$(/usr/libexec/PlistBuddy -c 'Print :CFBundleShortVersionString' "$mounted_app/Contents/Info.plist")" = "$VERSION"
+          test "$(/usr/libexec/PlistBuddy -c 'Print :CFBundleVersion' "$mounted_app/Contents/Info.plist")" = "$BUILD"
+          test "$(/usr/libexec/PlistBuddy -c 'Print :LSMinimumSystemVersion' "$mounted_app/Contents/Info.plist")" = 27.0
           codesign --verify --deep --strict --verbose=2 "$mounted_app"
-          hdiutil detach "$device"
+          diskutil eject "$mount_point"
           trap - EXIT
 
       - name: Freeze and verify DMG SHA-256
@@ -126,7 +134,7 @@ jobs:
           shasum -a 256 -c "$DMG.sha256"
 
       - name: Attest release artifacts
-        uses: actions/attest@508db95dd578ae2727ebd6217d5ba78e4fbda05d # v4.2.1
+        uses: actions/attest@1e69f48acb82d1966a394da916b4c1698aa569d6 # v4.2.2
         with:
           subject-path: |
             dist/${{ env.DMG }}

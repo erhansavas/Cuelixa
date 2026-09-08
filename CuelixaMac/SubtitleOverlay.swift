@@ -228,8 +228,8 @@ final class SubtitleOverlayController: NSObject {
 
     currentTime.font = .monospacedDigitSystemFont(ofSize: 11, weight: .regular)
     remainingTime.font = .monospacedDigitSystemFont(ofSize: 11, weight: .regular)
-    currentTime.textColor = .secondaryLabelColor
-    remainingTime.textColor = .secondaryLabelColor
+    currentTime.textColor = .labelColor
+    remainingTime.textColor = .labelColor
     currentTime.alignment = .right
     remainingTime.alignment = .left
 

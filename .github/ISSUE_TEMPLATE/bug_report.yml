@@ -10,14 +10,14 @@ body:
     id: version
     attributes:
       label: Cuelixa version
-      placeholder: 0.6.66 (build 52)
+      placeholder: 0.7 (build 53)
     validations:
       required: true
   - type: input
     id: macos
     attributes:
       label: macOS version and Mac model
-      placeholder: macOS 26.6.2, Apple silicon
+      placeholder: macOS 27.0, Apple silicon
     validations:
       required: true
   - type: textarea

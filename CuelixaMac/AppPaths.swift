@@ -40,14 +40,15 @@ struct AppDirectories: Sendable {
   }
 
   func ensure(fileManager fm: FileManager = .default) throws {
-    for url in [library, support, cache, transcripts, staging] {
-      try fm.createDirectory(at: url, withIntermediateDirectories: true)
-      var isDirectory: ObjCBool = false
-      guard fm.fileExists(atPath: url.path, isDirectory: &isDirectory), isDirectory.boolValue,
-        fm.isReadableFile(atPath: url.path), fm.isWritableFile(atPath: url.path)
-      else {
-        throw CocoaError(.fileWriteInvalidFileName, userInfo: [NSFilePathErrorKey: url.path])
-      }
+    try fm.createDirectory(at: library, withIntermediateDirectories: true)
+    var isDirectory: ObjCBool = false
+    guard fm.fileExists(atPath: library.path, isDirectory: &isDirectory), isDirectory.boolValue,
+      fm.isReadableFile(atPath: library.path), fm.isWritableFile(atPath: library.path)
+    else {
+      throw CocoaError(.fileWriteInvalidFileName, userInfo: [NSFilePathErrorKey: library.path])
+    }
+    for url in [support, cache, transcripts, staging] {
+      try LocalFileAccess.ensurePrivateDirectory(url)
     }
   }
 

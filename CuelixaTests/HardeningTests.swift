@@ -1,4 +1,5 @@
 // SPDX-License-Identifier: Apache-2.0
+import Darwin
 import Foundation
 import Testing
 import XCTest
@@ -254,6 +255,63 @@ struct ImportCoordinatorTests {
     let summary = await ImportCoordinator(directories: .isolated(root: root)).importFiles([source])
     #expect(summary.count(.failed) == 1)
   }
+
+  @Test("A dangling destination link is skipped during collision resolution")
+  func skipsDanglingDestinationLink() async throws {
+    let root = try temporaryRoot()
+    defer { try? FileManager.default.removeItem(at: root) }
+    let directories = AppDirectories.isolated(root: root)
+    try directories.ensure()
+
+    let source = root.appendingPathComponent("incoming.mp3")
+    try Data("new audio".utf8).write(to: source)
+    let dangling = directories.library.appendingPathComponent("incoming.mp3")
+    try FileManager.default.createSymbolicLink(
+      at: dangling, withDestinationURL: root.appendingPathComponent("missing.mp3"))
+    let secondDangling = directories.library.appendingPathComponent("incoming (2).mp3")
+    try FileManager.default.createSymbolicLink(
+      at: secondDangling, withDestinationURL: root.appendingPathComponent("missing-second.mp3"))
+
+    let summary = await ImportCoordinator(directories: directories).importFiles([source])
+
+    #expect(summary.count(.imported) == 1)
+    #expect(
+      FileManager.default.fileExists(
+        atPath: directories.library.appendingPathComponent("incoming (3).mp3").path))
+    #expect(
+      (try? FileManager.default.destinationOfSymbolicLink(atPath: dangling.path)) != nil)
+    #expect(
+      (try? FileManager.default.destinationOfSymbolicLink(atPath: secondDangling.path)) != nil)
+  }
+
+  @Test("A supported-name symlink keeps the selected audio extension")
+  func symlinkPreservesExtension() async throws {
+    let root = try temporaryRoot()
+    defer { try? FileManager.default.removeItem(at: root) }
+    let directories = AppDirectories.isolated(root: root)
+    try directories.ensure()
+
+    let sourceDirectory = root.appendingPathComponent("source", isDirectory: true)
+    try FileManager.default.createDirectory(
+      at: sourceDirectory, withIntermediateDirectories: true)
+    let target = sourceDirectory.appendingPathComponent("audio-without-extension")
+    try Data("symlink audio".utf8).write(to: target)
+    let dropped = sourceDirectory.appendingPathComponent("alias.mp3")
+    try FileManager.default.createSymbolicLink(at: dropped, withDestinationURL: target)
+
+    let summary = await ImportCoordinator(directories: directories).importFiles([dropped])
+    let destination = directories.library.appendingPathComponent("alias.mp3")
+    #expect(summary.count(.imported) == 1)
+    #expect(FileManager.default.fileExists(atPath: destination.path))
+
+    let database = LibraryDatabase(url: directories.database)
+    let scanner = LibraryScanner(
+      db: database, directories: directories,
+      metadataLoader: { _ in (duration: 1, title: nil) })
+    await scanner.reconcileNow()
+    let hash = try #require(sha256File(target))
+    #expect(database.track(hash: hash)?.path == destination.path)
+  }
 }
 
 @Suite("Batched database reconciliation", .serialized)
@@ -356,6 +414,36 @@ struct ScannerBatchTests {
     #expect(changedMetrics.databaseTransactions == 1)
     #expect(changedMetrics.completed)
   }
+
+  @Test("Non-regular audio-named entries are ignored")
+  func ignoresSpecialAudioEntries() async throws {
+    let root = try temporaryRoot()
+    defer { try? FileManager.default.removeItem(at: root) }
+    let directories = AppDirectories.isolated(root: root)
+    try directories.ensure()
+    let regular = directories.library.appendingPathComponent("regular.mp3")
+    try Data("audio".utf8).write(to: regular)
+
+    let fifo = directories.library.appendingPathComponent("pipe.mp3")
+    let result = fifo.path.withCString { path in mkfifo(path, mode_t(0o600)) }
+    #expect(result == 0)
+    defer { try? FileManager.default.removeItem(at: fifo) }
+
+    let counter = HashCounter()
+    let database = LibraryDatabase(url: directories.database)
+    let scanner = LibraryScanner(
+      db: database, directories: directories,
+      hashFile: { url in try await counter.hash(url) },
+      metadataLoader: { _ in (duration: 1, title: nil) })
+
+    await scanner.reconcileNow()
+    let metrics = await scanner.metrics()
+    let hashCount = await counter.value()
+    #expect(metrics.enumeratedFiles == 1)
+    #expect(metrics.hashedFiles == 1)
+    #expect(hashCount == 1)
+    #expect(database.fileRecords()?.count == 1)
+  }
 }
 
 @Suite("Transcript cache integrity", .serialized)
@@ -367,7 +455,7 @@ struct TranscriptCacheTests {
     let directories = AppDirectories.isolated(root: root)
     try directories.ensure()
     let cache = TranscriptCache(directories: directories)
-    let hash = "audio-hash"
+    let hash = String(repeating: "a", count: 64)
     let srt = cache.srtURL(hash: hash)
     let manifest = cache.manifestURL(hash: hash)
     try "1\n00:00:00,000 --> 00:00:01,000\nHello\n".write(

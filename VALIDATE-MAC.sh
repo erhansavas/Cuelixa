@@ -3,20 +3,28 @@
 set -euo pipefail
 cd "$(dirname "$0")"
 
-expected_macos="${CUELIXA_MACOS_VERSION:-26.6.2}"
-expected_ci_macos_series="${CUELIXA_CI_MACOS_SERIES:-26}"
-expected_xcode="${CUELIXA_XCODE_VERSION:-26.6}"
-expected_xcode_build="${CUELIXA_XCODE_BUILD:-17F113}"
-expected_swift="${CUELIXA_SWIFT_VERSION:-6.3.3}"
+expected_macos="${CUELIXA_MACOS_VERSION:-27.0}"
+expected_xcode="${CUELIXA_XCODE_VERSION:-27.0}"
+expected_xcode_build="${CUELIXA_XCODE_BUILD:-27A5252f}"
+expected_swift="${CUELIXA_SWIFT_VERSION:-6.4}"
 expected_build="$(sed -nE 's/.*CURRENT_PROJECT_VERSION = ([^;]+);.*/\1/p' CuelixaMac.xcodeproj/project.pbxproj | head -n 1)"
 expected_version="$(sed -nE 's/.*MARKETING_VERSION = ([^;]+);.*/\1/p' CuelixaMac.xcodeproj/project.pbxproj | head -n 1)"
 [[ -n "$expected_build" && -n "$expected_version" ]] || { print -u2 'ERROR: project version metadata missing'; exit 1; }
-ci_mode="${CUELIXA_CI_MODE:-0}"
+build_only="${CUELIXA_BUILD_ONLY:-0}"
+swift_target=(-target arm64-apple-macos27.0)
 
 fail() { print -u2 -- "ERROR: $*"; exit 1; }
 pass() { print -- "$1=PASS"; }
 
-[[ "$ci_mode" == "0" || "$ci_mode" == "1" ]] || fail 'CUELIXA_CI_MODE must be 0 or 1'
+[[ "$build_only" == "0" || "$build_only" == "1" ]] || fail 'CUELIXA_BUILD_ONLY must be 0 or 1'
+
+run_smoke() {
+  if [[ "$build_only" == "0" ]]; then
+    "$1"
+  else
+    print -- "COMPILED_ONLY: ${1:t} (macOS 27 runtime required)"
+  fi
+}
 
 print '=== Environment ==='
 sw_vers
@@ -24,11 +32,9 @@ xcodebuild -version
 xcrun swiftc --version
 [[ "$(uname -m)" == "arm64" ]] || fail 'qualification must run on arm64'
 actual_macos="$(sw_vers -productVersion)"
-if [[ "$ci_mode" == "1" ]]; then
-  [[ "$actual_macos" == "$expected_ci_macos_series" || "$actual_macos" == "$expected_ci_macos_series".* ]] \
-    || fail "CI validation expects macOS ${expected_ci_macos_series}.x, found $actual_macos"
-  print -- "CI compatibility mode: macOS $actual_macos is accepted for build/static validation only."
-  print -- "Exact target macOS $expected_macos runtime qualification remains NOT ESTABLISHED."
+if [[ "$build_only" == "1" ]]; then
+  print -- "Build-only validation on macOS $actual_macos: all app/test targets require macOS 27.0."
+  print -- "Runtime tests are not executed in this mode; full macOS $expected_macos validation is required before release."
 else
   [[ "$actual_macos" == "$expected_macos" ]] || fail "expected macOS $expected_macos, found $actual_macos"
 fi
@@ -52,7 +58,7 @@ for swift_file in CuelixaMac/*.swift; do
 done
 pass 'XCODE_SWIFT_SOURCE_MEMBERSHIP'
 
-# macOS 26 native overlay contract: first-party Liquid Glass with restrained
+# Native macOS overlay contract: first-party Liquid Glass with restrained
 # Cuelixa identity tint only where playback meaning benefits from color.
 overlay_source='CuelixaMac/SubtitleOverlay.swift'
 grep -Fq 'NSGlassEffectView' "$overlay_source" || fail 'Subtitle overlay is not using native NSGlassEffectView'
@@ -62,10 +68,27 @@ grep -Fq 'playPauseButton.contentTintColor = CuelixaDesign.identityAccentNS' "$o
 if grep -Fq 'NSVisualEffectView(frame: .zero)' "$overlay_source"; then fail 'Legacy custom visual-effect overlay returned'; fi
 pass 'NATIVE_GLASS_OVERLAY'
 
+# Native macOS app-icon source: keep one Icon Composer document authoritative and
+# require its package to be present in the target Resources phase.
+icon_document='CuelixaMac/AppIcon.icon'
+[[ -f "$icon_document/icon.json" ]] || fail 'Icon Composer document is missing icon.json'
+for icon_layer in \
+  "$icon_document/Assets/01-caption-line.svg" \
+  "$icon_document/Assets/02-active-cue.svg" \
+  "$icon_document/Assets/03-cue-continuation.svg"; do
+  [[ -f "$icon_layer" ]] || fail "Icon Composer layer is missing: $icon_layer"
+done
+grep -Fq 'path = AppIcon.icon;' CuelixaMac.xcodeproj/project.pbxproj \
+  || fail 'Icon Composer file reference missing'
+grep -Fq 'AppIcon.icon in Resources' CuelixaMac.xcodeproj/project.pbxproj \
+  || fail 'Icon Composer target Resources membership missing'
+pass 'ICON_COMPOSER_SOURCE_MEMBERSHIP'
+
 for asset_json in \
   CuelixaMac/Assets.xcassets/Contents.json \
   CuelixaMac/Assets.xcassets/AppIcon.appiconset/Contents.json \
-  CuelixaMac/Assets.xcassets/AccentColor.colorset/Contents.json; do
+  CuelixaMac/Assets.xcassets/AccentColor.colorset/Contents.json \
+  CuelixaMac/AppIcon.icon/icon.json; do
   ASSET_JSON_PATH="$asset_json" xcrun swift -e 'import Foundation; let path = ProcessInfo.processInfo.environment["ASSET_JSON_PATH"]!; let data = try Data(contentsOf: URL(fileURLWithPath: path)); _ = try JSONSerialization.jsonObject(with: data)' >/dev/null
 done
 pass 'ASSET_CATALOG_JSON_PARSE'
@@ -77,11 +100,11 @@ grep -Fq '<false/>' CuelixaMac/PrivacyInfo.xcprivacy || fail 'privacy tracking m
 xmllint --noout CuelixaMac.xcodeproj/xcshareddata/xcschemes/Cuelixa.xcscheme
 
 if grep -R -nE '/Users/|/opt/homebrew|DerivedData|(-march|-mcpu)=native|arm64e|x86_64|ffmpeg|whisper|python' \
-  CuelixaMac CuelixaMac.xcodeproj --exclude='*.png'; then
+  CuelixaMac CuelixaMac.xcodeproj/project.pbxproj CuelixaMac.xcodeproj/xcshareddata --exclude='*.png'; then
   fail 'machine-specific or prohibited shipping dependency pattern found'
 fi
 if grep -R -nE 'import[[:space:]]+AppIntents|AppIntents\.framework|AppShortcutsProvider|AppShortcut|NSUserActivity|INIntent|NSSiri' \
-  CuelixaMac CuelixaMac.xcodeproj --exclude='*.png'; then
+  CuelixaMac CuelixaMac.xcodeproj/project.pbxproj CuelixaMac.xcodeproj/xcshareddata --exclude='*.png'; then
   fail 'unintended App Intents/Shortcuts registration path found'
 fi
 appintents_absence_verified=1
@@ -242,61 +265,62 @@ DD_RELEASE="$(mktemp -d "${TMPDIR:-/tmp}/cuelixa-release-deriveddata.XXXXXX")"
 DD_TEST="$(mktemp -d "${TMPDIR:-/tmp}/cuelixa-test-deriveddata.XXXXXX")"
 LOG_DIR="$(mktemp -d "${TMPDIR:-/tmp}/cuelixa-validation.XXXXXX")"
 trap 'rm -rf "$SMOKE_DIR" "$DD_DEBUG" "$DD_RELEASE" "$DD_TEST" "$LOG_DIR"' EXIT
-xcrun swiftc -parse-as-library -warnings-as-errors Tests/AttributedStringRunSmoke.swift -o "$SMOKE_DIR/attributed-run-smoke"
-"$SMOKE_DIR/attributed-run-smoke"
+xcrun swiftc "${swift_target[@]}" -parse-as-library -warnings-as-errors Tests/AttributedStringRunSmoke.swift -o "$SMOKE_DIR/attributed-run-smoke"
+run_smoke "$SMOKE_DIR/attributed-run-smoke"
 
 print '=== Swift 6 transcription concurrency typecheck ==='
-xcrun swiftc -swift-version 6 -strict-concurrency=complete -typecheck -warnings-as-errors Tests/TranscriptionConcurrencySmoke.swift
+xcrun swiftc "${swift_target[@]}" -swift-version 6 -strict-concurrency=complete -typecheck -warnings-as-errors Tests/TranscriptionConcurrencySmoke.swift
 
 print '=== Speech API target-SDK typecheck ==='
-xcrun swiftc -typecheck -warnings-as-errors Tests/SpeechAPISmoke.swift
+xcrun swiftc "${swift_target[@]}" -typecheck -warnings-as-errors Tests/SpeechAPISmoke.swift
 
 print '=== AVFoundation local-playback target-SDK typecheck ==='
-xcrun swiftc -parse-as-library -swift-version 6 -strict-concurrency=complete -typecheck -warnings-as-errors Tests/LocalPlaybackSmoke.swift
-if [[ "$ci_mode" == "0" ]]; then
-  print '=== Exact-target generated local AVPlayer playback smoke ==='
-  xcrun swiftc -parse-as-library -swift-version 6 -strict-concurrency=complete -warnings-as-errors \
-    Tests/LocalPlaybackSmoke.swift -framework AVFoundation -o "$SMOKE_DIR/local-playback-smoke"
-  "$SMOKE_DIR/local-playback-smoke"
-else
-  print 'CI compatibility mode: generated local AVPlayer runtime smoke skipped; exact target remains required.'
-fi
+xcrun swiftc "${swift_target[@]}" -parse-as-library -swift-version 6 -strict-concurrency=complete -typecheck -warnings-as-errors Tests/LocalPlaybackSmoke.swift
+xcrun swiftc "${swift_target[@]}" -parse-as-library -swift-version 6 -strict-concurrency=complete -warnings-as-errors \
+  Tests/LocalPlaybackSmoke.swift -framework AVFoundation -o "$SMOKE_DIR/local-playback-smoke"
+run_smoke "$SMOKE_DIR/local-playback-smoke"
 
 print '=== Playback resume-policy smoke ==='
-xcrun swiftc -parse-as-library -warnings-as-errors CuelixaMac/Models.swift Tests/PlaybackPolicySmoke.swift -o "$SMOKE_DIR/playback-policy-smoke"
-"$SMOKE_DIR/playback-policy-smoke"
+xcrun swiftc "${swift_target[@]}" -parse-as-library -warnings-as-errors CuelixaMac/Models.swift Tests/PlaybackPolicySmoke.swift -o "$SMOKE_DIR/playback-policy-smoke"
+run_smoke "$SMOKE_DIR/playback-policy-smoke"
 
 print '=== Deterministic subtitle / utility / database smoke ==='
-xcrun swiftc -parse-as-library -warnings-as-errors CuelixaMac/Subtitle.swift Tests/SubtitleSmoke.swift -o "$SMOKE_DIR/subtitle-smoke"
-"$SMOKE_DIR/subtitle-smoke"
-xcrun swiftc -parse-as-library -warnings-as-errors CuelixaMac/Utilities.swift Tests/UtilitySmoke.swift -o "$SMOKE_DIR/utility-smoke"
-"$SMOKE_DIR/utility-smoke"
-xcrun swiftc -parse-as-library -warnings-as-errors \
-  CuelixaMac/AppPaths.swift CuelixaMac/Models.swift CuelixaMac/Database.swift \
+xcrun swiftc "${swift_target[@]}" -parse-as-library -warnings-as-errors CuelixaMac/LocalFileAccess.swift CuelixaMac/Subtitle.swift Tests/SubtitleSmoke.swift -o "$SMOKE_DIR/subtitle-smoke"
+run_smoke "$SMOKE_DIR/subtitle-smoke"
+xcrun swiftc "${swift_target[@]}" -parse-as-library -warnings-as-errors CuelixaMac/LocalFileAccess.swift CuelixaMac/Utilities.swift Tests/UtilitySmoke.swift -o "$SMOKE_DIR/utility-smoke"
+run_smoke "$SMOKE_DIR/utility-smoke"
+xcrun swiftc "${swift_target[@]}" -parse-as-library -warnings-as-errors \
+  CuelixaMac/LocalFileAccess.swift CuelixaMac/AppPaths.swift CuelixaMac/Models.swift CuelixaMac/Database.swift \
   Tests/DatabaseSmokeSupport.swift Tests/DatabaseSmoke.swift -lsqlite3 -o "$SMOKE_DIR/database-smoke"
-"$SMOKE_DIR/database-smoke"
+run_smoke "$SMOKE_DIR/database-smoke"
 
 print '=== Import / scanner batching / rollback smoke ==='
-xcrun swiftc -parse-as-library -swift-version 6 -strict-concurrency=complete -warnings-as-errors \
-  CuelixaMac/AppPaths.swift CuelixaMac/Models.swift CuelixaMac/Database.swift \
+xcrun swiftc "${swift_target[@]}" -parse-as-library -swift-version 6 -strict-concurrency=complete -warnings-as-errors \
+  CuelixaMac/LocalFileAccess.swift CuelixaMac/AppPaths.swift CuelixaMac/Models.swift CuelixaMac/Database.swift \
   CuelixaMac/Utilities.swift CuelixaMac/LibraryScanner.swift CuelixaMac/ImportCoordinator.swift \
   Tests/HardeningSmoke.swift -lsqlite3 -o "$SMOKE_DIR/hardening-smoke"
-"$SMOKE_DIR/hardening-smoke"
+run_smoke "$SMOKE_DIR/hardening-smoke"
 
-print '=== Swift Testing integration and UI launch tests ==='
+test_action=test
+test_destination='platform=macOS,arch=arm64'
+if [[ "$build_only" == "1" ]]; then
+  test_action=build-for-testing
+  test_destination='generic/platform=macOS'
+fi
+print -- "=== Native test targets: $test_action ==="
 xcodebuild \
   -project CuelixaMac.xcodeproj \
   -scheme Cuelixa \
   -configuration Debug \
-  -destination 'platform=macOS,arch=arm64' \
+  -destination "$test_destination" \
   -derivedDataPath "$DD_TEST" \
   CODE_SIGNING_ALLOWED=YES CODE_SIGN_IDENTITY=- \
-  test 2>&1 | tee "$LOG_DIR/test.log"
+  "$test_action" 2>&1 | tee "$LOG_DIR/test.log"
 
 build_common=(
   -project CuelixaMac.xcodeproj
   -scheme Cuelixa
-  -destination 'platform=macOS,arch=arm64'
+  -destination 'generic/platform=macOS'
   CODE_SIGNING_ALLOWED=NO
 )
 
@@ -316,7 +340,8 @@ if [[ -n "$warnings" ]]; then
     warning_payload="${warning_line#*warning: }"
     if [[ "${appintents_absence_verified:-0}" == "1" \
       && "$warning_line" == *appintentsmetadataprocessor* \
-      && "$warning_payload" == 'Metadata extraction skipped. No AppIntents.framework dependency found.' ]]; then
+      && ( "$warning_payload" == 'Metadata extraction skipped. No AppIntents.framework dependency found.' \
+        || "$warning_payload" == 'Metadata extraction skipped, no AppIntents.framework dependency found' ) ]]; then
       print -- "BENIGN_XCODE_TOOL_WARNING_ALLOWED: $warning_line"
       continue
     fi
@@ -335,7 +360,7 @@ settings="$(xcodebuild "${build_common[@]}" -configuration Release -derivedDataP
 print -- "$settings" | grep -E '^[[:space:]]*(ARCHS|SUPPORTED_PLATFORMS|MACOSX_DEPLOYMENT_TARGET|ENABLE_HARDENED_RUNTIME|ENABLE_APP_SANDBOX|CURRENT_PROJECT_VERSION|MARKETING_VERSION|PRODUCT_BUNDLE_IDENTIFIER|SWIFT_STRICT_CONCURRENCY|SWIFT_TREAT_WARNINGS_AS_ERRORS)[[:space:]]*='
 print -- "$settings" | grep -Eq 'ARCHS = arm64$' || fail 'Release ARCHS is not arm64'
 print -- "$settings" | grep -Eq 'SUPPORTED_PLATFORMS = macosx$' || fail 'Release platform is not macosx'
-print -- "$settings" | grep -Eq 'MACOSX_DEPLOYMENT_TARGET = 26\.0$' || fail 'deployment target is not macOS 26.0'
+print -- "$settings" | grep -Eq 'MACOSX_DEPLOYMENT_TARGET = 27\.0$' || fail 'deployment target is not macOS 27.0'
 print -- "$settings" | grep -Eq 'ENABLE_HARDENED_RUNTIME = YES$' || fail 'Hardened Runtime is not enabled'
 print -- "$settings" | grep -Eq 'ENABLE_APP_SANDBOX = NO$' || fail 'unexpected App Sandbox setting'
 print -- "$settings" | grep -Eq "CURRENT_PROJECT_VERSION = ${expected_build}$" || fail 'wrong engineering build number'
@@ -348,11 +373,20 @@ print -- "$settings" | grep -Eq 'SWIFT_TREAT_WARNINGS_AS_ERRORS = YES$' || fail 
 APP="$DD_RELEASE/Build/Products/Release/Cuelixa.app"
 BIN="$APP/Contents/MacOS/Cuelixa"
 [[ -x "$BIN" ]] || fail "missing Release executable: $BIN"
+[[ "$(/usr/libexec/PlistBuddy -c 'Print :CFBundleShortVersionString' "$APP/Contents/Info.plist")" == "$expected_version" ]] || fail 'Release bundle version mismatch'
+[[ "$(/usr/libexec/PlistBuddy -c 'Print :CFBundleVersion' "$APP/Contents/Info.plist")" == "$expected_build" ]] || fail 'Release bundle build mismatch'
+[[ "$(/usr/libexec/PlistBuddy -c 'Print :LSMinimumSystemVersion' "$APP/Contents/Info.plist")" == '27.0' ]] || fail 'Release bundle minimum macOS mismatch'
 
 print '=== Release binary ==='
 file "$BIN"
 [[ "$(lipo -archs "$BIN")" == "arm64" ]] || fail 'Release binary is not arm64-only'
-otool -l "$BIN" | awk '/LC_BUILD_VERSION/{show=1; next} show && /minos/{print; show=0}'
+binary_minos="$(otool -l "$BIN" | awk '/LC_BUILD_VERSION/{show=1; next} show && /minos/{print $2; show=0}')"
+[[ "$binary_minos" == '27.0' ]] || fail "Release executable minimum macOS is $binary_minos"
+print -- "RELEASE_BUNDLE_IDENTITY=PASS ($expected_version/$expected_build, minimum macOS $binary_minos)"
+if strings "$BIN" | grep -F 'CUELIXA_UI_TEST_ROOT'; then
+  fail 'UI test-root override is present in the Release executable'
+fi
+pass 'RELEASE_TEST_ISOLATION_DISABLED'
 
 print '=== Nested native payload ==='
 find "$APP" -type f -print0 | while IFS= read -r -d '' candidate; do
@@ -384,9 +418,8 @@ if grep -qE 'scheduledTimer\(withTimeInterval:.*repeats: true|Timer\.publish|CAD
 fi
 echo "OVERLAY_PLAYBACK_CONTRACT=PASS"
 
-# App identity: the catalog accent and forced SwiftUI tint must stay aligned
-# with the approved AppIcon coral (#FF645A), avoiding the unrelated blue system
-# accent in Cuelixa-owned controls/navigation emphasis.
+# Retain coral identity emphasis. The catalog uses a deeper coral so native
+# selection highlights have sufficient contrast with their white text.
 grep -q 'ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor' CuelixaMac.xcodeproj/project.pbxproj || fail 'AccentColor build setting missing'
 grep -q 'CuelixaDesign.identityAccent' CuelixaMac/MainView.swift || fail 'identity tint missing from main view'
 [[ -f CuelixaMac/Assets.xcassets/AccentColor.colorset/Contents.json ]] || fail 'AccentColor asset missing'
@@ -413,8 +446,8 @@ grep -Fq '@Binding var isPresented: Bool' CuelixaMac/MainView.swift || fail 'bat
 grep -A4 -F 'Button("Dismiss") {' CuelixaMac/MainView.swift | grep -Fq 'isPresented = false' || fail 'Dismiss does not close batch status popover'
 pass 'BATCH_POPOVER_DISMISS_GUARD'
 
-if [[ "$ci_mode" == "1" ]]; then
-  print 'CI VALIDATION PASSED — XCODE DEBUG + RELEASE + ANALYZE + SDK SMOKES — EXACT macOS 26.6.2 TARGET NOT ESTABLISHED'
+if [[ "$build_only" == "1" ]]; then
+  print 'BUILD VALIDATION PASSED — TEST TARGETS + DEBUG + RELEASE + ANALYZE + SDK SMOKE COMPILATION — RUNTIME NOT EXECUTED'
 else
   print 'VALIDATION PASSED — EXACT TARGET XCODE DEBUG + RELEASE + ANALYZE + SDK SMOKES'
 fi

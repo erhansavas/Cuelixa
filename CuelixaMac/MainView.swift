@@ -158,6 +158,7 @@ private struct LibraryContent: View {
   @EnvironmentObject private var model: AppModel
   @Binding var selection: Track.ID?
   @ObservedObject var player: PlaybackController
+  @FocusState private var listHasFocus: Bool
 
   var body: some View {
     Group {
@@ -181,6 +182,12 @@ private struct LibraryContent: View {
           )
         }
         .listStyle(.inset)
+        .accessibilityLabel("Lessons")
+        .focused($listHasFocus)
+        .onChange(of: selection) { _, selection in
+          if selection != nil { listHasFocus = true }
+        }
+        .simultaneousGesture(TapGesture().onEnded { listHasFocus = true })
         .onKeyPress(.return) { activateSelection() }
         .onKeyPress(.space) { activateSelection() }
       }
@@ -193,10 +200,13 @@ private struct LibraryContent: View {
     guard let selection,
       let track = model.tracks.first(where: { $0.id == selection })
     else { return .ignored }
-    if player.activeHash == track.contentHash && player.isRunning {
-      model.togglePlayPause()
-    } else {
-      model.playTrack(track)
+    // Key handling can run during SwiftUI's focus update; publish playback state afterward.
+    Task { @MainActor [model] in
+      if model.player.activeHash == track.contentHash && model.player.isRunning {
+        model.togglePlayPause()
+      } else {
+        model.playTrack(track)
+      }
     }
     return .handled
   }
@@ -403,7 +413,7 @@ struct TrackRow: View {
 
       Text(durationLabel(track.duration))
         .font(.caption.monospacedDigit())
-        .foregroundStyle(.secondary)
+        .foregroundStyle(.primary)
         .frame(width: 46, alignment: .trailing)
 
       TrackActionsMenu(track: track)

@@ -1,5 +1,6 @@
 // SPDX-License-Identifier: Apache-2.0
 import CoreServices
+import Darwin
 import Foundation
 import OSLog
 
@@ -247,6 +248,15 @@ actor LibraryScanner {
       if Task.isCancelled { return nil }
       guard Self.audioExtensions.contains(candidate.pathExtension.lowercased()) else { continue }
       let resolved = candidate.standardizedFileURL.resolvingSymlinksInPath()
+      // The extension filter is only a naming rule. A library directory can also
+      // contain FIFOs, devices, or sockets whose names end in `.mp3`; passing one
+      // to FileHandle for hashing can block before cooperative cancellation gets
+      // another chance. Resolve first so links to regular audio remain supported,
+      // then require the resolved entry to be a regular file.
+      guard
+        let values = try? resolved.resourceValues(forKeys: [.isRegularFileKey]),
+        values.isRegularFile == true
+      else { continue }
       var isDirectory: ObjCBool = false
       guard fm.fileExists(atPath: resolved.path, isDirectory: &isDirectory), !isDirectory.boolValue,
         canonicalPaths.insert(resolved.path).inserted
@@ -259,21 +269,30 @@ actor LibraryScanner {
 
   /// Interrupted imports can leave only Cuelixa's hidden staging name. Cleanup
   /// runs once on the scanner actor during startup, never on the AppKit thread.
-  private func cleanupStaleImportFiles(fileManager fm: FileManager) {
+  private func cleanupStaleImportFiles(fileManager fm: FileManager) -> Bool {
+    guard let lease = try? LibraryImportLease.acquire(at: directories.library, forCleanup: true)
+    else { return false }
+    defer { withExtendedLifetime(lease) {} }
     guard
       let contents = try? fm.contentsOfDirectory(
         at: directories.library, includingPropertiesForKeys: nil)
-    else { return }
+    else { return false }
     for url in contents
     where url.lastPathComponent.hasPrefix(".cuelixa-import-") && url.pathExtension == "tmp" {
-      do {
-        try fm.removeItem(at: url)
-      } catch {
+      if Task.isCancelled { return false }
+      let identifier = url.deletingPathExtension().lastPathComponent.dropFirst(
+        ".cuelixa-import-".count)
+      guard UUID(uuidString: String(identifier)) != nil, LocalFileAccess.isRegularFile(url) else {
+        continue
+      }
+      if unlink(url.path) != 0 && errno != ENOENT {
+        let error = LocalFileAccess.posixError()
         logger.error(
           "Could not remove stale import staging file: \(error.localizedDescription, privacy: .private)"
         )
       }
     }
+    return true
   }
 
   private func perform() async {
@@ -289,8 +308,7 @@ actor LibraryScanner {
     }
     let fm = FileManager.default
     if !cleanedStaleImports {
-      cleanupStaleImportFiles(fileManager: fm)
-      cleanedStaleImports = true
+      cleanedStaleImports = cleanupStaleImportFiles(fileManager: fm)
     }
     if Task.isCancelled { return }
     let failure = ScanFailureFlag()

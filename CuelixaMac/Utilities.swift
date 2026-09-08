@@ -13,43 +13,35 @@ func naturalLess(_ a: String, _ b: String) -> Bool {
 }
 
 func durationLabel(_ seconds: Double) -> String {
-  guard seconds.isFinite else { return "0:00" }
-  let x = max(0, Int(seconds.rounded(.down)))
+  guard seconds.isFinite, seconds >= 0, let x = Int64(exactly: seconds.rounded(.down)) else {
+    return "0:00"
+  }
   let h = x / 3600
   let m = (x % 3600) / 60
   let s = x % 60
-  return h > 0 ? String(format: "%d:%02d:%02d", h, m, s) : String(format: "%d:%02d", m, s)
+  return h > 0 ? String(format: "%lld:%02lld:%02lld", h, m, s) : String(format: "%lld:%02lld", m, s)
 }
 
 func clockLabel(_ seconds: Double) -> String {
-  guard seconds.isFinite else { return "00:00" }
-  let x = max(0, Int(seconds.rounded(.down)))
+  guard seconds.isFinite, seconds >= 0, let x = Int64(exactly: seconds.rounded(.down)) else {
+    return "00:00"
+  }
   let h = x / 3600
   let m = (x % 3600) / 60
   let s = x % 60
-  return h > 0 ? String(format: "%d:%02d:%02d", h, m, s) : String(format: "%02d:%02d", m, s)
+  return h > 0
+    ? String(format: "%lld:%02lld:%02lld", h, m, s) : String(format: "%02lld:%02lld", m, s)
 }
 
 func sha256File(_ url: URL) -> String? {
-  guard let stream = InputStream(url: url) else { return nil }
-  stream.open()
-  defer { stream.close() }
-  var hasher = SHA256()
-  var buffer = [UInt8](repeating: 0, count: 1024 * 1024)
-  while stream.hasBytesAvailable {
-    let n = stream.read(&buffer, maxLength: buffer.count)
-    if n < 0 { return nil }
-    if n == 0 { break }
-    hasher.update(data: Data(buffer[0..<n]))
-  }
-  return hasher.finalize().map { String(format: "%02x", $0) }.joined()
+  try? sha256FileCheckingCancellation(url)
 }
 
 /// Synchronous hashing for actors that must remain non-reentrant while still
 /// reacting to cancellation between bounded read chunks.
-func sha256FileCheckingCancellation(_ url: URL) throws -> String {
+func sha256FileCheckingCancellation(_ url: URL, followSymlinks: Bool = true) throws -> String {
   try Task.checkCancellation()
-  let input = try FileHandle(forReadingFrom: url)
+  let input = try LocalFileAccess.openRegularFile(url, followSymlinks: followSymlinks)
   defer { try? input.close() }
   var hasher = SHA256()
   while true {
@@ -84,19 +76,7 @@ func copyAndSHA256File(from source: URL, to destination: URL) async throws -> St
   let work = Task.detached(priority: .utility) {
     try Task.checkCancellation()
     try FileManager.default.copyItem(at: source, to: destination)
-    try Task.checkCancellation()
-
-    let input = try FileHandle(forReadingFrom: destination)
-    defer { try? input.close() }
-
-    var hasher = SHA256()
-    while true {
-      try Task.checkCancellation()
-      guard let data = try input.read(upToCount: 1024 * 1024), !data.isEmpty else { break }
-      hasher.update(data: data)
-    }
-    try Task.checkCancellation()
-    return hasher.finalize().map { String(format: "%02x", $0) }.joined()
+    return try sha256FileCheckingCancellation(destination, followSymlinks: false)
   }
 
   return try await withTaskCancellationHandler {

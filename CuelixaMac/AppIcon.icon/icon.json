@@ -1,0 +1,52 @@
+{
+  "fill": {
+    "linear-gradient": [
+      "srgb:0.152941,0.172549,0.211765,1.000000",
+      "srgb:0.086275,0.101961,0.129412,1.000000"
+    ]
+  },
+  "groups": [
+    {
+      "layers": [
+        {
+          "fill": "automatic",
+          "glass": true,
+          "hidden": false,
+          "image-name": "01-caption-line.svg",
+          "name": "01-caption-line",
+          "opacity": 1
+        },
+        {
+          "fill": "automatic",
+          "glass": true,
+          "hidden": false,
+          "image-name": "02-active-cue.svg",
+          "name": "02-active-cue",
+          "opacity": 1
+        },
+        {
+          "fill": "automatic",
+          "glass": true,
+          "hidden": false,
+          "image-name": "03-cue-continuation.svg",
+          "name": "03-cue-continuation",
+          "opacity": 1
+        }
+      ],
+      "lighting": "individual",
+      "shadow": {
+        "kind": "neutral",
+        "opacity": 0.5
+      },
+      "translucency": {
+        "enabled": false,
+        "value": 0.5
+      }
+    }
+  ],
+  "supported-platforms": {
+    "squares": [
+      "macOS"
+    ]
+  }
+}

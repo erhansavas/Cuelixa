@@ -31,8 +31,10 @@ actor ImportCoordinator {
   func importFiles(_ urls: [URL]) -> ImportSummary {
     var results: [ImportFileResult] = []
     results.reserveCapacity(urls.count)
+    let lease: LibraryImportLease?
     do {
       try directories.ensure()
+      lease = try LibraryImportLease.acquire(at: directories.library)
     } catch {
       return ImportSummary(
         results: urls.map {
@@ -41,6 +43,7 @@ actor ImportCoordinator {
             detail: "The library folder could not be prepared: \(error.localizedDescription)")
         })
     }
+    defer { withExtendedLifetime(lease) {} }
 
     for (index, url) in urls.enumerated() {
       if Task.isCancelled {
@@ -59,10 +62,12 @@ actor ImportCoordinator {
 
   private func importOne(_ originalURL: URL) -> ImportFileResult {
     let name = originalURL.lastPathComponent
-    guard LibraryScanner.audioExtensions.contains(originalURL.pathExtension.lowercased()) else {
+    guard originalURL.isFileURL,
+      LibraryScanner.audioExtensions.contains(originalURL.pathExtension.lowercased())
+    else {
       return .init(
         sourceName: name, disposition: .unsupported, destinationName: nil,
-        detail: "Unsupported audio extension.")
+        detail: "Choose a local file with a supported audio extension.")
     }
     let fm = FileManager.default
     let source = originalURL.standardizedFileURL.resolvingSymlinksInPath()
@@ -81,15 +86,24 @@ actor ImportCoordinator {
 
       guard let sourceSignature = fileSignature(source) else { throw ImportError.hashFailed }
 
-      var destination = root.appendingPathComponent(source.lastPathComponent)
-      if fm.fileExists(atPath: destination.path) {
-        if try filesMatch(source, destination) {
+      // Keep the name the user dropped. The resolved URL is only the byte source;
+      // using its basename can produce a destination without an audio extension
+      // (for example, an `alias.mp3` symlink to an extensionless target), which
+      // the library scanner would correctly ignore.
+      var destination = root.appendingPathComponent(name)
+      if destinationEntryExists(destination, fileManager: fm) {
+        // Compare bytes only when the occupied entry resolves to a regular
+        // file. A dangling link has a directory entry but no readable bytes;
+        // hashing it would fail before collision resolution can move on.
+        if (try? destination.resourceValues(forKeys: [.isRegularFileKey]))?.isRegularFile == true,
+          try filesMatch(source, destination)
+        {
           return .init(
             sourceName: name, disposition: .duplicate,
             destinationName: destination.lastPathComponent,
             detail: "An identical file is already in the library.")
         }
-        destination = try availableDestination(for: source, root: root)
+        destination = try availableDestination(forName: name, root: root)
       }
 
       let temporary = root.appendingPathComponent(".cuelixa-import-\(UUID().uuidString).tmp")
@@ -115,7 +129,7 @@ actor ImportCoordinator {
             sourceName: name, disposition: .imported,
             destinationName: destination.lastPathComponent, detail: nil)
         } catch let error as CocoaError where error.code == .fileWriteFileExists {
-          destination = try availableDestination(for: source, root: root)
+          destination = try availableDestination(forName: name, root: root)
         }
       }
     } catch is CancellationError {
@@ -139,17 +153,25 @@ actor ImportCoordinator {
     return firstHash == secondHash
   }
 
-  private func availableDestination(for source: URL, root: URL) throws -> URL {
+  private func availableDestination(forName fileName: String, root: URL) throws -> URL {
     let fm = FileManager.default
-    let stem = source.deletingPathExtension().lastPathComponent
-    let suffix = source.pathExtension
+    let sourceName = (fileName as NSString).deletingPathExtension
+    let stem = sourceName.isEmpty ? "Lesson" : sourceName
+    let suffix = (fileName as NSString).pathExtension
     for index in 2..<10_000 {
       try Task.checkCancellation()
       let name = suffix.isEmpty ? "\(stem) (\(index))" : "\(stem) (\(index)).\(suffix)"
       let candidate = root.appendingPathComponent(name)
-      if !fm.fileExists(atPath: candidate.path) { return candidate }
+      // fileExists follows the final symlink and returns false for a dangling
+      // link. attributesOfItem describes the directory entry itself, so every
+      // occupied name (including dangling links) is skipped before the move.
+      if !destinationEntryExists(candidate, fileManager: fm) { return candidate }
     }
     throw ImportError.noDestination
+  }
+
+  private func destinationEntryExists(_ url: URL, fileManager fm: FileManager) -> Bool {
+    (try? fm.attributesOfItem(atPath: url.path)) != nil
   }
 }
 

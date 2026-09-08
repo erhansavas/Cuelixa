@@ -107,6 +107,7 @@ actor AppleSpeechExecutor: TranscriptionExecuting {
           .trimmingCharacters(in: .whitespacesAndNewlines)
         guard !text.isEmpty else { continue }
         let end = start + max(0.05, duration)
+        guard end.isFinite else { continue }
         fragments.append(TimedTranscriptFragment(start: start, end: end, text: text))
         latestTime = max(latestTime, end)
         appendedTimedRun = true
@@ -117,13 +118,15 @@ actor AppleSpeechExecutor: TranscriptionExecuting {
         let duration = max(0, CMTimeGetSeconds(result.range.duration))
         guard start.isFinite, duration.isFinite, duration > 0 else { continue }
         let end = start + max(0.25, duration)
+        guard end.isFinite else { continue }
         fragments.append(TimedTranscriptFragment(start: start, end: end, text: fullText))
         latestTime = max(latestTime, end)
       }
 
       let percent: Int?
-      if trackDuration > 0 {
-        percent = min(99, max(1, Int((latestTime / trackDuration) * 100)))
+      if trackDuration.isFinite, trackDuration > 0 {
+        let fraction = min(0.99, max(0.01, latestTime / trackDuration))
+        percent = Int((fraction * 100).rounded())
       } else {
         percent = nil
       }
