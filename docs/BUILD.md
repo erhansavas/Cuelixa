@@ -1,6 +1,6 @@
 # Build and validation
 
-These instructions apply to Cuelixa 0.6.66 (build 52).
+These instructions apply to Cuelixa 0.7 (build 53).
 
 ## Requirements
 

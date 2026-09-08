@@ -1,4 +1,4 @@
-# Cuelixa 0.6.66 release procedure
+# Cuelixa 0.7 release procedure
 
 Cuelixa's public GitHub build is distributed without a paid Apple Developer ID certificate. The release therefore uses an ad-hoc-signed application inside a read-only DMG and does not claim Apple notarization or verified developer identity.
 
@@ -6,7 +6,7 @@ Cuelixa's public GitHub build is distributed without a paid Apple Developer ID c
 
 - Release title, tag, package name and checksum are derived from the Xcode project's marketing version.
 - The application build is derived from `CURRENT_PROJECT_VERSION`.
-- The release identity is `0.6.66` / build `52`.
+- The release identity is `0.7` / build `53`.
 
 ## Release checks
 
@@ -19,7 +19,7 @@ Cuelixa's public GitHub build is distributed without a paid Apple Developer ID c
 7. Mount the DMG read-only and recheck the packaged architecture, metadata, and signature.
 8. Generate and verify SHA-256 only after the DMG is frozen.
 9. Generate GitHub build-provenance attestations for the frozen DMG and checksum.
-10. Publish `Cuelixa-0.6.66-macOS-arm64.dmg` and `Cuelixa-0.6.66-macOS-arm64.dmg.sha256` together under tag `v0.6.66`.
+10. Publish `Cuelixa-0.7-macOS-arm64.dmg` and `Cuelixa-0.7-macOS-arm64.dmg.sha256` together under tag `v0.7`.
 
 ## First launch
 

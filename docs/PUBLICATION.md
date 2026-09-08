@@ -4,12 +4,12 @@
 
 This repository publishes the Cuelixa source code and a free macOS Apple-silicon DMG through GitHub Releases.
 
-Release identity: **Cuelixa 0.6.66 (build 52)** under tag **`v0.6.66`**.
+Planned release identity: **Cuelixa 0.7 (build 53)** under tag **`v0.7`**. Updating the source version does not create the tag or publish a package.
 
 ## Public artifacts
 
-- `Cuelixa-0.6.66-macOS-arm64.dmg`
-- `Cuelixa-0.6.66-macOS-arm64.dmg.sha256`
+- `Cuelixa-0.7-macOS-arm64.dmg`
+- `Cuelixa-0.7-macOS-arm64.dmg.sha256`
 
 ## Publication gates
 
@@ -23,7 +23,7 @@ Release identity: **Cuelixa 0.6.66 (build 52)** under tag **`v0.6.66`**.
 - final DMG SHA-256 is generated and verified after packaging;
 - GitHub build-provenance attestations cover the frozen DMG and checksum;
 - license, notices, privacy/security documentation, and release notes match the published source revision;
-- `v0.6.66`, the application metadata, DMG name and checksum filename agree exactly.
+- `v0.7`, the application metadata, DMG name and checksum filename agree exactly.
 
 ## Free-distribution security posture
 

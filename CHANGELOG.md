@@ -1,5 +1,18 @@
 # Changelog
 
+## Cuelixa 0.7 (build 53) — Unreleased
+
+- Harden local audio, subtitle, transcript-cache, and database access against malformed input, unsafe paths, symlink substitution, and blocking special files.
+- Protect import cleanup from concurrent imports and preserve discoverable filenames when importing audio through symlinks.
+- Improve Unicode search and treat `%` and `_` as literal search text.
+- Restore Space/Return playback after lesson selection and prevent playback updates during SwiftUI focus handling.
+- Improve selection, lesson-duration, and playback-time contrast while retaining the coral identity.
+- Add a native Icon Composer source and refresh the README with matching icons and macOS 27 screenshots.
+- Expand coverage to 37 unit/integration tests, two performance tests, and four isolated native UI scenarios; validate Debug, Release, and Analyze with Xcode 27.
+- Update the pinned release-attestation action to v4.2.2.
+
+Current validation covers macOS 27. macOS 26 follow-up was skipped; unresolved platform and accessibility qualification limits are recorded in [Testing](docs/QUALIFICATION.md).
+
 ## Cuelixa 0.6.66 (build 52)
 
 - Validate the legacy library root before selecting it and isolate filesystem paths per process.
