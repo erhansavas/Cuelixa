@@ -31,8 +31,10 @@ actor ImportCoordinator {
   func importFiles(_ urls: [URL]) -> ImportSummary {
     var results: [ImportFileResult] = []
     results.reserveCapacity(urls.count)
+    let lease: LibraryImportLease?
     do {
       try directories.ensure()
+      lease = try LibraryImportLease.acquire(at: directories.library)
     } catch {
       return ImportSummary(
         results: urls.map {
@@ -41,6 +43,7 @@ actor ImportCoordinator {
             detail: "The library folder could not be prepared: \(error.localizedDescription)")
         })
     }
+    defer { withExtendedLifetime(lease) {} }
 
     for (index, url) in urls.enumerated() {
       if Task.isCancelled {
@@ -59,10 +62,12 @@ actor ImportCoordinator {
 
   private func importOne(_ originalURL: URL) -> ImportFileResult {
     let name = originalURL.lastPathComponent
-    guard LibraryScanner.audioExtensions.contains(originalURL.pathExtension.lowercased()) else {
+    guard originalURL.isFileURL,
+      LibraryScanner.audioExtensions.contains(originalURL.pathExtension.lowercased())
+    else {
       return .init(
         sourceName: name, disposition: .unsupported, destinationName: nil,
-        detail: "Unsupported audio extension.")
+        detail: "Choose a local file with a supported audio extension.")
     }
     let fm = FileManager.default
     let source = originalURL.standardizedFileURL.resolvingSymlinksInPath()

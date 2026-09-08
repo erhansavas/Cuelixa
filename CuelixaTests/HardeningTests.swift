@@ -455,7 +455,7 @@ struct TranscriptCacheTests {
     let directories = AppDirectories.isolated(root: root)
     try directories.ensure()
     let cache = TranscriptCache(directories: directories)
-    let hash = "audio-hash"
+    let hash = String(repeating: "a", count: 64)
     let srt = cache.srtURL(hash: hash)
     let manifest = cache.manifestURL(hash: hash)
     try "1\n00:00:00,000 --> 00:00:01,000\nHello\n".write(

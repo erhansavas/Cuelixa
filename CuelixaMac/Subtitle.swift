@@ -239,6 +239,10 @@ enum SubtitleTimeline {
 }
 
 enum SRT {
+  // Far above ordinary lesson transcripts, but bounded before allocating or
+  // parsing an untrusted sidecar (including a file that grows during reading).
+  static let maximumFileBytes = 16 * 1_024 * 1_024
+
   static func validSidecarURL(forAudioPath path: String) -> URL? {
     let audioURL = URL(fileURLWithPath: path)
     let sidecar = audioURL.deletingPathExtension().appendingPathExtension("srt")
@@ -246,11 +250,14 @@ enum SRT {
   }
 
   static func parse(url: URL) -> [SubtitleCue] {
-    guard let source = try? String(contentsOf: url, encoding: .utf8) else { return [] }
+    guard let data = try? LocalFileAccess.readData(at: url, maximumBytes: maximumFileBytes),
+      let source = String(data: data, encoding: .utf8)
+    else { return [] }
     return parse(source)
   }
 
   static func parse(_ source: String) -> [SubtitleCue] {
+    guard source.utf8.count <= maximumFileBytes else { return [] }
     let normalized =
       source
       .replacingOccurrences(of: "\u{feff}", with: "")
@@ -275,15 +282,16 @@ enum SRT {
   }
 
   static func validate(url: URL) -> Bool {
-    guard let attrs = try? FileManager.default.attributesOfItem(atPath: url.path),
-      (attrs[.size] as? NSNumber)?.intValue ?? 0 > 0,
-      let source = try? String(contentsOf: url, encoding: .utf8)
-    else { return false }
-    return !parse(source).isEmpty
+    !parse(url: url).isEmpty
   }
 
   static func encode(_ cues: [SubtitleCue]) -> String {
-    cues.enumerated().map { index, cue in
+    guard
+      cues.allSatisfy({
+        milliseconds($0.start) != nil && milliseconds($0.end) != nil && $0.end > $0.start
+      })
+    else { return "" }
+    return cues.enumerated().map { index, cue in
       "\(index + 1)\n\(stamp(cue.start)) --> \(stamp(cue.end))\n\(cue.text.trimmingCharacters(in: .whitespacesAndNewlines))\n"
     }.joined(separator: "\n")
   }
@@ -304,12 +312,17 @@ enum SRT {
   }
 
   private static func stamp(_ value: Double) -> String {
-    let ms = max(0, Int((value * 1000).rounded()))
+    guard let ms = milliseconds(value) else { return "00:00:00,000" }
     let hours = ms / 3_600_000
     let minutes = (ms % 3_600_000) / 60_000
     let seconds = (ms % 60_000) / 1000
     let remainder = ms % 1000
-    return String(format: "%02d:%02d:%02d,%03d", hours, minutes, seconds, remainder)
+    return String(format: "%02lld:%02lld:%02lld,%03lld", hours, minutes, seconds, remainder)
+  }
+
+  private static func milliseconds(_ value: Double) -> Int64? {
+    guard value.isFinite, value >= 0 else { return nil }
+    return Int64(exactly: (value * 1000).rounded())
   }
 
   /// AVPlayer does not parse external SRT payloads for the custom subtitle
@@ -333,8 +346,8 @@ enum SRT {
         break
       }
       result.append(contentsOf: text[cursor..<ampersand])
-      guard let semicolon = text[ampersand...].firstIndex(of: ";"),
-        text.distance(from: ampersand, to: semicolon) <= 12
+      let entityEnd = text.index(ampersand, offsetBy: 13, limitedBy: text.endIndex) ?? text.endIndex
+      guard let semicolon = text[ampersand..<entityEnd].firstIndex(of: ";")
       else {
         result.append("&")
         cursor = text.index(after: ampersand)
@@ -343,10 +356,11 @@ enum SRT {
       let entity = String(text[text.index(after: ampersand)..<semicolon])
       if let decoded = decodeEntity(entity) {
         result.append(contentsOf: decoded)
+        cursor = text.index(after: semicolon)
       } else {
-        result.append(contentsOf: text[ampersand...semicolon])
+        result.append("&")
+        cursor = text.index(after: ampersand)
       }
-      cursor = text.index(after: semicolon)
     }
     return result.trimmingCharacters(in: .whitespacesAndNewlines)
   }
@@ -398,6 +412,7 @@ enum SubtitleBalancer {
     }
 
     let text = collapse(trimmed)
+    guard maxLineChars > 0, maxLines > 0 else { return text }
     guard text.count > maxLineChars else { return text }
     let words = text.split(separator: " ").map(String.init)
     guard words.count >= 6 else { return text }
@@ -407,21 +422,34 @@ enum SubtitleBalancer {
     lineCount = min(lineCount, max(1, words.count / 2))
     guard lineCount >= 2 else { return text }
 
+    // Keep the exact scoring for normal cues. Large user-authored paragraphs
+    // use a linear partition that preserves every word, instead of searching
+    // a combinatorial number of possible line breaks on the playback actor.
+    if words.count > 256 || lineCount > 3 {
+      return partitionLongCue(words, lineCount: lineCount)
+    }
+
     let target = Double(text.count) / Double(lineCount)
     var bestScore: Double?
-    var bestLines: [String]?
+    var bestSplits: [Int]?
+    var prefixLengths = [0]
+    for word in words { prefixLengths.append((prefixLengths.last ?? 0) + word.count + 1) }
+    let weakEnd = words.map { weakEnds.contains(stripTrailingPunctuation($0.lowercased())) }
+    let breakStart = words.map { breakStarts.contains(stripLeadingPunctuation($0.lowercased())) }
+    let punctuatedEnd = words.map { word in
+      word.last.map { ",;:.!?".contains($0) } ?? false
+    }
 
     func evaluate(_ splits: [Int]) {
       let starts = [0] + splits
       let ends = splits + [words.count]
-      var lines: [String] = []
+      var lengths: [Int] = []
       for index in starts.indices {
         let start = starts[index]
         let end = ends[index]
         guard end - start >= 2 else { return }
-        lines.append(words[start..<end].joined(separator: " "))
+        lengths.append(prefixLengths[end] - prefixLengths[start] - 1)
       }
-      let lengths = lines.map { $0.count }
       var score = lengths.reduce(0.0) { $0 + pow(Double($1) - target, 2) }
       score += lengths.reduce(0.0) { total, length in
         total + pow(max(0.0, Double(length - maxLineChars)), 2) * 12
@@ -430,27 +458,21 @@ enum SubtitleBalancer {
         total + pow(max(0.0, target * 0.55 - Double(length)), 2) * 3
       }
 
-      for index in 0..<(lines.count - 1) {
-        let lastWord = lines[index].split(separator: " ").last.map(String.init) ?? ""
-        let last = stripTrailingPunctuation(lastWord.lowercased())
-        if weakEnds.contains(last) { score += 55 }
-        if let final = lines[index].last, [",", ";", ":", ".", "!", "?"].contains(String(final)) {
-          score -= 6
-        }
-        let firstWord = lines[index + 1].split(separator: " ").first.map(String.init) ?? ""
-        let first = stripLeadingPunctuation(firstWord.lowercased())
-        if breakStarts.contains(first) { score -= 5 }
+      for split in splits {
+        if weakEnd[split - 1] { score += 55 }
+        if punctuatedEnd[split - 1] { score -= 6 }
+        if breakStart[split] { score -= 5 }
       }
-      if lines.last?.split(separator: " ").count ?? 0 <= 2 { score += 120 }
+      if words.count - (splits.last ?? 0) <= 2 { score += 120 }
 
       if let currentBest = bestScore {
         if score < currentBest {
           bestScore = score
-          bestLines = lines
+          bestSplits = splits
         }
       } else {
         bestScore = score
-        bestLines = lines
+        bestSplits = splits
       }
     }
 
@@ -471,7 +493,34 @@ enum SubtitleBalancer {
 
     var cuts: [Int] = []
     choose(2, lineCount - 1, &cuts)
-    return bestLines?.joined(separator: "\n") ?? text
+    guard let bestSplits else { return text }
+    return zip([0] + bestSplits, bestSplits + [words.count])
+      .map { words[$0..<$1].joined(separator: " ") }.joined(separator: "\n")
+  }
+
+  private static func partitionLongCue(_ words: [String], lineCount: Int) -> String {
+    let lengths = words.map { $0.count + 1 }
+    var remainingLength = lengths.reduce(0, +)
+    var next = 0
+    var lines: [String] = []
+    for line in 0..<lineCount {
+      let remainingLines = lineCount - line
+      if remainingLines == 1 {
+        lines.append(words[next...].joined(separator: " "))
+        break
+      }
+      let target = remainingLength / remainingLines
+      let start = next
+      var length = 0
+      let lastAllowed = words.count - (remainingLines - 1) * 2
+      while next < lastAllowed && (next - start < 2 || length < target) {
+        length += lengths[next]
+        next += 1
+      }
+      remainingLength -= length
+      lines.append(words[start..<next].joined(separator: " "))
+    }
+    return lines.joined(separator: "\n")
   }
 
   private static func collapse(_ value: String) -> String {

@@ -1,5 +1,6 @@
 // SPDX-License-Identifier: Apache-2.0
 import CoreServices
+import Darwin
 import Foundation
 import OSLog
 
@@ -268,21 +269,30 @@ actor LibraryScanner {
 
   /// Interrupted imports can leave only Cuelixa's hidden staging name. Cleanup
   /// runs once on the scanner actor during startup, never on the AppKit thread.
-  private func cleanupStaleImportFiles(fileManager fm: FileManager) {
+  private func cleanupStaleImportFiles(fileManager fm: FileManager) -> Bool {
+    guard let lease = try? LibraryImportLease.acquire(at: directories.library, forCleanup: true)
+    else { return false }
+    defer { withExtendedLifetime(lease) {} }
     guard
       let contents = try? fm.contentsOfDirectory(
         at: directories.library, includingPropertiesForKeys: nil)
-    else { return }
+    else { return false }
     for url in contents
     where url.lastPathComponent.hasPrefix(".cuelixa-import-") && url.pathExtension == "tmp" {
-      do {
-        try fm.removeItem(at: url)
-      } catch {
+      if Task.isCancelled { return false }
+      let identifier = url.deletingPathExtension().lastPathComponent.dropFirst(
+        ".cuelixa-import-".count)
+      guard UUID(uuidString: String(identifier)) != nil, LocalFileAccess.isRegularFile(url) else {
+        continue
+      }
+      if unlink(url.path) != 0 && errno != ENOENT {
+        let error = LocalFileAccess.posixError()
         logger.error(
           "Could not remove stale import staging file: \(error.localizedDescription, privacy: .private)"
         )
       }
     }
+    return true
   }
 
   private func perform() async {
@@ -298,8 +308,7 @@ actor LibraryScanner {
     }
     let fm = FileManager.default
     if !cleanedStaleImports {
-      cleanupStaleImportFiles(fileManager: fm)
-      cleanedStaleImports = true
+      cleanedStaleImports = cleanupStaleImportFiles(fileManager: fm)
     }
     if Task.isCancelled { return }
     let failure = ScanFailureFlag()

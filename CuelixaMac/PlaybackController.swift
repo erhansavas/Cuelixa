@@ -92,7 +92,8 @@ final class PlaybackController: ObservableObject {
 
   init(directories: AppDirectories = AppPaths.current) {
     self.directories = directories
-    if let d = try? Data(contentsOf: directories.preferences),
+    if let d = try? LocalFileAccess.readData(
+      at: directories.preferences, maximumBytes: 64 * 1_024, followSymlinks: false),
       let o = try? JSONSerialization.jsonObject(with: d) as? [String: Any],
       let v = o["volume"] as? Double
     {
@@ -257,7 +258,7 @@ final class PlaybackController: ObservableObject {
 
   private func installPlayerObservers(item: AVPlayerItem, player: AVPlayer, generation: UInt64) {
     endObserver = NotificationCenter.default.addObserver(
-      forName: .AVPlayerItemDidPlayToEndTime, object: item, queue: .main
+      forName: AVPlayerItem.didPlayToEndTimeNotification, object: item, queue: .main
     ) { [weak self, weak item] _ in
       Task { @MainActor in
         guard let self, let item, self.playbackGeneration == generation,
@@ -269,7 +270,7 @@ final class PlaybackController: ObservableObject {
     }
 
     failureObserver = NotificationCenter.default.addObserver(
-      forName: .AVPlayerItemFailedToPlayToEndTime, object: item, queue: .main
+      forName: AVPlayerItem.failedToPlayToEndTimeNotification, object: item, queue: .main
     ) { [weak self, weak item] notification in
       let failure = notification.userInfo?[AVPlayerItemFailedToPlayToEndTimeErrorKey] as? Error
       Task { @MainActor in
@@ -922,7 +923,8 @@ final class PlaybackController: ObservableObject {
       return
     }
     var o: [String: Any] = [:]
-    if let d = try? Data(contentsOf: directories.preferences),
+    if let d = try? LocalFileAccess.readData(
+      at: directories.preferences, maximumBytes: 64 * 1_024, followSymlinks: false),
       let old = try? JSONSerialization.jsonObject(with: d) as? [String: Any]
     {
       o = old

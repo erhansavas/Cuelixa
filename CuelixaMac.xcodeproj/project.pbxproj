@@ -5,6 +5,9 @@
 	objectVersion = 77;
 	objects = {
 /* Begin PBXBuildFile section */
+		C20660660000000000000043 /* SecurityRegressionTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = C20660660000000000000044 /* SecurityRegressionTests.swift */; };
+		C20660660000000000000041 /* LocalFileAccess.swift in Sources */ = {isa = PBXBuildFile; fileRef = C20660660000000000000040 /* LocalFileAccess.swift */; };
+		C20660660000000000000042 /* LocalFileAccess.swift in Sources */ = {isa = PBXBuildFile; fileRef = C20660660000000000000040 /* LocalFileAccess.swift */; };
 		A1B2C3D4E5F60718293A4B5C /* SubtitleOverlay.swift in Sources */ = {isa = PBXBuildFile; fileRef = B1C2D3E4F5061728394A5B6C /* SubtitleOverlay.swift */; };
 		F6B5F45FFF55524ACEAAED39 /* AppModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6FC0A0AA26B095D01079FAE2 /* AppModel.swift */; };
 		74DEC197FFA0CCB17E72FC2F /* AppPaths.swift in Sources */ = {isa = PBXBuildFile; fileRef = 975BF69C7944E06D1E359AE7 /* AppPaths.swift */; };
@@ -46,6 +49,8 @@
 /* End PBXContainerItemProxy section */
 
 /* Begin PBXFileReference section */
+		C20660660000000000000044 /* SecurityRegressionTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SecurityRegressionTests.swift; sourceTree = "<group>"; };
+		C20660660000000000000040 /* LocalFileAccess.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LocalFileAccess.swift; sourceTree = "<group>"; };
 		B1C2D3E4F5061728394A5B6C /* SubtitleOverlay.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SubtitleOverlay.swift; sourceTree = "<group>"; };
 		6FC0A0AA26B095D01079FAE2 /* AppModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppModel.swift; sourceTree = "<group>"; };
 		975BF69C7944E06D1E359AE7 /* AppPaths.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppPaths.swift; sourceTree = "<group>"; };
@@ -86,6 +91,7 @@
 		64292B1C2B2E13EAD8788FC8 /* CuelixaMac */ = {isa = PBXGroup; children = (
 			6FC0A0AA26B095D01079FAE2 /* AppModel.swift */,
 			975BF69C7944E06D1E359AE7 /* AppPaths.swift */,
+			C20660660000000000000040 /* LocalFileAccess.swift */,
 			5B9E1046134CAEF04FAEA92E /* CuelixaApp.swift */,
 			F5D3898397A816D0ED3A3266 /* Database.swift */,
 			7BFC85AB89462BC2D13BE166 /* Design.swift */,
@@ -107,7 +113,7 @@
 			C20660660000000000000031 /* AppIcon.icon */,
 			7A1C4E90123456789ABCDEE0 /* PrivacyInfo.xcprivacy */,
 		); path = CuelixaMac; sourceTree = "<group>"; };
-		A20660660000000000000012 /* CuelixaTests */ = {isa = PBXGroup; children = (A20660660000000000000013 /* HardeningTests.swift */,); path = CuelixaTests; sourceTree = "<group>"; };
+		A20660660000000000000012 /* CuelixaTests */ = {isa = PBXGroup; children = (A20660660000000000000013 /* HardeningTests.swift */, C20660660000000000000044 /* SecurityRegressionTests.swift */,); path = CuelixaTests; sourceTree = "<group>"; };
 		B20660660000000000000012 /* CuelixaUITests */ = {isa = PBXGroup; children = (B20660660000000000000013 /* CuelixaLaunchTests.swift */,); path = CuelixaUITests; sourceTree = "<group>"; };
 		4FCFB17C3E55E8A168D5907F /* Products */ = {isa = PBXGroup; children = (38A007151ABE87CC01A5B6E9 /* Cuelixa.app */, A20660660000000000000011 /* CuelixaTests.xctest */, B20660660000000000000011 /* CuelixaUITests.xctest */,); name = Products; sourceTree = "<group>"; };
 /* End PBXGroup section */
@@ -132,6 +138,7 @@
 		BCE16DD0260827ECF338C787 /* Sources */ = {isa = PBXSourcesBuildPhase; buildActionMask = 2147483647; files = (
 			F6B5F45FFF55524ACEAAED39 /* AppModel.swift in Sources */,
 			74DEC197FFA0CCB17E72FC2F /* AppPaths.swift in Sources */,
+			C20660660000000000000041 /* LocalFileAccess.swift in Sources */,
 			5769DADD7B3BC2A4B5FAE2DB /* CuelixaApp.swift in Sources */,
 			4257FAF75B12412C509E5231 /* Database.swift in Sources */,
 			0E82DBB9AA15037B7895F1C6 /* Design.swift in Sources */,
@@ -150,7 +157,7 @@
 			2DBF635C9E89D39DF5B716AE /* TranscriptCache.swift in Sources */,
 			59F7A9042EB6837B8DF57D6C /* Utilities.swift in Sources */,
 		); runOnlyForDeploymentPostprocessing = 0; };
-		A20660660000000000000015 /* Sources */ = {isa = PBXSourcesBuildPhase; buildActionMask = 2147483647; files = (A20660660000000000000014 /* HardeningTests.swift in Sources */, A20660660000000000000020 /* AppPaths.swift in Sources */, A20660660000000000000021 /* Models.swift in Sources */, A20660660000000000000022 /* Database.swift in Sources */, A20660660000000000000023 /* Utilities.swift in Sources */, A20660660000000000000024 /* Subtitle.swift in Sources */, A20660660000000000000025 /* LibraryScanner.swift in Sources */, A20660660000000000000026 /* TranscriptCache.swift in Sources */, A20660660000000000000027 /* ImportCoordinator.swift in Sources */, A30660660000000000000003 /* NativeTranscriber.swift in Sources */, A30660660000000000000004 /* TranscriptionExecutor.swift in Sources */,); runOnlyForDeploymentPostprocessing = 0; };
+		A20660660000000000000015 /* Sources */ = {isa = PBXSourcesBuildPhase; buildActionMask = 2147483647; files = (A20660660000000000000014 /* HardeningTests.swift in Sources */, C20660660000000000000043 /* SecurityRegressionTests.swift in Sources */, A20660660000000000000020 /* AppPaths.swift in Sources */, C20660660000000000000042 /* LocalFileAccess.swift in Sources */, A20660660000000000000021 /* Models.swift in Sources */, A20660660000000000000022 /* Database.swift in Sources */, A20660660000000000000023 /* Utilities.swift in Sources */, A20660660000000000000024 /* Subtitle.swift in Sources */, A20660660000000000000025 /* LibraryScanner.swift in Sources */, A20660660000000000000026 /* TranscriptCache.swift in Sources */, A20660660000000000000027 /* ImportCoordinator.swift in Sources */, A30660660000000000000003 /* NativeTranscriber.swift in Sources */, A30660660000000000000004 /* TranscriptionExecutor.swift in Sources */,); runOnlyForDeploymentPostprocessing = 0; };
 		B20660660000000000000015 /* Sources */ = {isa = PBXSourcesBuildPhase; buildActionMask = 2147483647; files = (B20660660000000000000014 /* CuelixaLaunchTests.swift in Sources */,); runOnlyForDeploymentPostprocessing = 0; };
 /* End PBXSourcesBuildPhase section */
 

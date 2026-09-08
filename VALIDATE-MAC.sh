@@ -94,11 +94,11 @@ grep -Fq '<false/>' CuelixaMac/PrivacyInfo.xcprivacy || fail 'privacy tracking m
 xmllint --noout CuelixaMac.xcodeproj/xcshareddata/xcschemes/Cuelixa.xcscheme
 
 if grep -R -nE '/Users/|/opt/homebrew|DerivedData|(-march|-mcpu)=native|arm64e|x86_64|ffmpeg|whisper|python' \
-  CuelixaMac CuelixaMac.xcodeproj --exclude='*.png'; then
+  CuelixaMac CuelixaMac.xcodeproj/project.pbxproj CuelixaMac.xcodeproj/xcshareddata --exclude='*.png'; then
   fail 'machine-specific or prohibited shipping dependency pattern found'
 fi
 if grep -R -nE 'import[[:space:]]+AppIntents|AppIntents\.framework|AppShortcutsProvider|AppShortcut|NSUserActivity|INIntent|NSSiri' \
-  CuelixaMac CuelixaMac.xcodeproj --exclude='*.png'; then
+  CuelixaMac CuelixaMac.xcodeproj/project.pbxproj CuelixaMac.xcodeproj/xcshareddata --exclude='*.png'; then
   fail 'unintended App Intents/Shortcuts registration path found'
 fi
 appintents_absence_verified=1
@@ -284,18 +284,18 @@ xcrun swiftc -parse-as-library -warnings-as-errors CuelixaMac/Models.swift Tests
 "$SMOKE_DIR/playback-policy-smoke"
 
 print '=== Deterministic subtitle / utility / database smoke ==='
-xcrun swiftc -parse-as-library -warnings-as-errors CuelixaMac/Subtitle.swift Tests/SubtitleSmoke.swift -o "$SMOKE_DIR/subtitle-smoke"
+xcrun swiftc -parse-as-library -warnings-as-errors CuelixaMac/LocalFileAccess.swift CuelixaMac/Subtitle.swift Tests/SubtitleSmoke.swift -o "$SMOKE_DIR/subtitle-smoke"
 "$SMOKE_DIR/subtitle-smoke"
-xcrun swiftc -parse-as-library -warnings-as-errors CuelixaMac/Utilities.swift Tests/UtilitySmoke.swift -o "$SMOKE_DIR/utility-smoke"
+xcrun swiftc -parse-as-library -warnings-as-errors CuelixaMac/LocalFileAccess.swift CuelixaMac/Utilities.swift Tests/UtilitySmoke.swift -o "$SMOKE_DIR/utility-smoke"
 "$SMOKE_DIR/utility-smoke"
 xcrun swiftc -parse-as-library -warnings-as-errors \
-  CuelixaMac/AppPaths.swift CuelixaMac/Models.swift CuelixaMac/Database.swift \
+  CuelixaMac/LocalFileAccess.swift CuelixaMac/AppPaths.swift CuelixaMac/Models.swift CuelixaMac/Database.swift \
   Tests/DatabaseSmokeSupport.swift Tests/DatabaseSmoke.swift -lsqlite3 -o "$SMOKE_DIR/database-smoke"
 "$SMOKE_DIR/database-smoke"
 
 print '=== Import / scanner batching / rollback smoke ==='
 xcrun swiftc -parse-as-library -swift-version 6 -strict-concurrency=complete -warnings-as-errors \
-  CuelixaMac/AppPaths.swift CuelixaMac/Models.swift CuelixaMac/Database.swift \
+  CuelixaMac/LocalFileAccess.swift CuelixaMac/AppPaths.swift CuelixaMac/Models.swift CuelixaMac/Database.swift \
   CuelixaMac/Utilities.swift CuelixaMac/LibraryScanner.swift CuelixaMac/ImportCoordinator.swift \
   Tests/HardeningSmoke.swift -lsqlite3 -o "$SMOKE_DIR/hardening-smoke"
 "$SMOKE_DIR/hardening-smoke"
