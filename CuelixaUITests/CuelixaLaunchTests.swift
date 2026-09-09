@@ -101,21 +101,42 @@ final class CuelixaLaunchTests: XCTestCase {
       let play = app.buttons["Play Accessible Lesson"]
       XCTAssertTrue(play.waitForExistence(timeout: 15))
       let window = app.windows.firstMatch
-      for size in [CGSize(width: 780, height: 620), CGSize(width: 1040, height: 740)] {
-        let corner = window.coordinate(withNormalizedOffset: CGVector(dx: 1, dy: 1))
-          .withOffset(CGVector(dx: -2, dy: -2))
-        let destination = window.coordinate(withNormalizedOffset: .zero)
-          .withOffset(CGVector(dx: size.width - 2, dy: size.height - 2))
-        corner.click(forDuration: 0.1, thenDragTo: destination)
-        XCTAssertEqual(window.frame.width, size.width, accuracy: 5)
-        XCTAssertTrue(play.isHittable)
-        XCTAssertTrue(app.searchFields.firstMatch.isHittable)
-        try auditAccessibility(app)
-        let screenshot = XCTAttachment(screenshot: window.screenshot())
-        screenshot.name = "Library-\(appearance == .light ? "Light" : "Dark")-\(Int(size.width))"
-        screenshot.lifetime = .keepAlways
-        add(screenshot)
-      }
+      let initialFrame = window.frame
+      let compactSize = CGSize(width: 780, height: 620)
+
+      let compactCorner = window.coordinate(withNormalizedOffset: CGVector(dx: 1, dy: 1))
+        .withOffset(CGVector(dx: -2, dy: -2))
+      let compactDestination = window.coordinate(withNormalizedOffset: .zero)
+        .withOffset(CGVector(dx: compactSize.width - 2, dy: compactSize.height - 2))
+      compactCorner.click(forDuration: 0.1, thenDragTo: compactDestination)
+      let compactFrame = window.frame
+      XCTAssertEqual(compactFrame.width, compactSize.width, accuracy: 5)
+      XCTAssertEqual(compactFrame.height, compactSize.height, accuracy: 5)
+      XCTAssertTrue(play.isHittable)
+      XCTAssertTrue(app.searchFields.firstMatch.isHittable)
+      try auditAccessibility(app)
+      let compactScreenshot = XCTAttachment(screenshot: window.screenshot())
+      compactScreenshot.name = "Library-\(appearance == .light ? "Light" : "Dark")-Compact"
+      compactScreenshot.lifetime = .keepAlways
+      add(compactScreenshot)
+
+      let expandedCorner = window.coordinate(withNormalizedOffset: CGVector(dx: 1, dy: 1))
+        .withOffset(CGVector(dx: -2, dy: -2))
+      let expandedDestination = window.coordinate(withNormalizedOffset: .zero)
+        .withOffset(CGVector(dx: initialFrame.width - 2, dy: initialFrame.height - 2))
+      expandedCorner.click(forDuration: 0.1, thenDragTo: expandedDestination)
+      let expandedFrame = window.frame
+      XCTAssertEqual(expandedFrame.width, initialFrame.width, accuracy: 5)
+      XCTAssertEqual(expandedFrame.height, initialFrame.height, accuracy: 5)
+      XCTAssertGreaterThan(expandedFrame.width, compactFrame.width)
+      XCTAssertGreaterThan(expandedFrame.height, compactFrame.height)
+      XCTAssertTrue(play.isHittable)
+      XCTAssertTrue(app.searchFields.firstMatch.isHittable)
+      try auditAccessibility(app)
+      let expandedScreenshot = XCTAttachment(screenshot: window.screenshot())
+      expandedScreenshot.name = "Library-\(appearance == .light ? "Light" : "Dark")-Expanded"
+      expandedScreenshot.lifetime = .keepAlways
+      add(expandedScreenshot)
       app.terminate()
     }
   }
@@ -196,5 +217,4 @@ final class CuelixaLaunchTests: XCTestCase {
     wav.append(Data(count: Int(dataByteCount)))
     try wav.write(to: root.appendingPathComponent("Music/Cuelixa/\(title).wav"))
   }
-
 }
