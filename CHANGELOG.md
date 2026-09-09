@@ -10,7 +10,7 @@
 - Make release-note extraction deterministic and keep 0.7.1 pre-release status encoded in the release workflow while macOS 27 remains beta.
 - Add pinned Swift CodeQL analysis, subject to successful validation in the final pull request.
 
-Full release qualification still requires the exact 0.7.1 candidate to pass `VALIDATE-MAC.sh` on an actual macOS 27 runtime. Hosted Xcode 27 CI is build/compile/Analyze evidence only because its current host is macOS 26.
+Permanent GitHub CI for 0.7.1 is configured to require a macOS 27 `xcode-27` host and run the complete validator. Hosted validation, CodeQL, repository presentation, and the independent exact-SHA macOS 27 run remain release gates until they have actually passed for the immutable final candidate.
 
 ## Cuelixa 0.7 (build 53)
 
