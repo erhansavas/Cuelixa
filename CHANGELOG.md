@@ -1,5 +1,17 @@
 # Changelog
 
+## Cuelixa 0.7.1 (build 54)
+
+- Keep scanner identity inside the canonical lesson-library hierarchy, handle safe internal symlinks deterministically, and reject external, dangling, or nonregular scanner targets.
+- Revalidate recorded file identity before playback and subtitle preparation; transcription additionally verifies a stable snapshot against the lesson content hash before publishing a durable cache.
+- Add regression coverage for symlink boundaries, canonical-target deduplication, external-symlink imports, and changed-source reconciliation.
+- Add a maintained architecture document, consolidate release documentation, and separate historical audit evidence from current source-of-truth docs.
+- Clarify source organization by giving the seek-slider source a truthful filename and keeping filesystem identity helpers with the local-file subsystem.
+- Make release-note extraction deterministic and keep 0.7.1 pre-release status encoded in the release workflow while macOS 27 remains beta.
+- Add pinned Swift CodeQL analysis, subject to successful validation in the final pull request.
+
+Full release qualification still requires the exact 0.7.1 candidate to pass `VALIDATE-MAC.sh` on an actual macOS 27 runtime. Hosted Xcode 27 CI is build/compile/Analyze evidence only because its current host is macOS 26.
+
 ## Cuelixa 0.7 (build 53)
 
 - Require macOS 27 or later on Apple silicon; align the app, tests, validation, and release packaging with Xcode 27.
