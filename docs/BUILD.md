@@ -31,15 +31,13 @@ Native UI tests use isolated temporary libraries. The `DEBUG` compilation condit
 
 ## Hosted GitHub validation
 
-The permanent macOS CI uses GitHub's Apple silicon `xcode-27` image and selects Xcode 27 beta 6 explicitly. GitHub currently hosts this image on macOS 26, so CI sets `CUELIXA_BUILD_ONLY=1`.
+The permanent `macos-arm64-release` job uses GitHub's Apple silicon `xcode-27` image, selects Xcode 27 beta 6 explicitly, and fails unless the actual host reports macOS major version 27. It then runs the complete validator without build-only mode. The final candidate Actions log is the evidence for the exact hosted macOS version; this document does not substitute a mutable platform claim for that run evidence.
 
-Build-only mode still verifies source integrity, formatting, project settings, application/test compilation, Debug and Release builds, Analyze, smoke-executable compilation, architecture, deployment target, and bundle metadata. Runtime-only executables and UI tests are reported as **compiled only** rather than executed.
-
-Hosted build-only evidence never substitutes for the full macOS 27 qualification required by [RELEASE.md](RELEASE.md).
+Hosted success is still independent of the required exact-SHA qualification on the user's own supported Mac. Both gates must correspond to the immutable candidate before release.
 
 ## Release-note extraction
 
-`Scripts/extract-release-notes.sh` extracts one exact `CHANGELOG.md` release section by version/build and fails if the expected heading is absent or duplicated. The validator exercises this script; the release workflow uses the same implementation rather than maintaining separate parsing logic.
+`Scripts/extract-release-notes.sh` extracts one exact `CHANGELOG.md` release section by version/build and fails if the expected heading is absent or duplicated. Permanent CI exercises this script directly and the release workflow uses the same implementation rather than maintaining separate parsing logic.
 
 ## Source integrity
 
