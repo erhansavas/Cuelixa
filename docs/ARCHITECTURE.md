@@ -8,6 +8,40 @@ Cuelixa is a local-first, unsandboxed macOS application for lesson-audio playbac
 
 `AppModel` is the `@MainActor` application coordinator. It connects filesystem reconciliation, persistence, transcription, playback, imports, and UI presentation while leaving subsystem work to narrower owners.
 
+## Decision rationale
+
+### Local-first and platform frameworks
+
+The current product operates on local lesson audio and produces local playback/transcript state, so it does not require an application-managed backend, account, analytics path, or cloud synchronization service. Keeping that boundary local avoids making ordinary listening or transcript reuse depend on Cuelixa-operated network infrastructure and keeps application-managed lesson state on the Mac. Apple Speech assets may still be installed by macOS when required; that is an Apple-managed platform dependency rather than a Cuelixa backend.
+
+Shipping code prefers frameworks already present on supported macOS releases. This avoids adding runtime package managers, helper binaries, Rosetta requirements, extra signing surfaces, or independently versioned media/transcription runtimes to a small native app. The trade-off is deliberate platform coupling: Cuelixa targets current Apple silicon/macOS APIs rather than providing a portable cross-platform runtime. See [Privacy architecture](PRIVACY.md) and [Dependency policy](DEPENDENCY-POLICY.md).
+
+### Persistence and content identity
+
+SQLite is used for the structured relationship between canonical file paths, content hashes, file signatures, lesson metadata, playback position, and completion state. A complete scanner reconciliation needs atomic database publication, and the current single-process design benefits from one durable local store rather than several loosely synchronized files. The SQLite connection is therefore confined to `LibraryDatabase` and one serial queue; FULLMUTEX is a second line of defense, not a substitute for that ownership rule. The trade-off is that `@unchecked Sendable` relies on this confinement remaining true.
+
+Tracks and managed transcript artifacts are content-addressed because a path is not a durable description of audio bytes. Binding reusable transcripts to an audio SHA-256 prevents a rename or path alias from silently redefining transcript identity. Managed SRT/manifest pairs are staged and atomically replaced so an interrupted publication does not intentionally expose a half-written pair as valid cache state. The cost is extra hashing/staging I/O at the trust transitions where durable byte identity matters.
+
+### Filesystem reconciliation and trust boundaries
+
+FSEvents is treated as an invalidation signal, not as an authoritative change log. Events can be coalesced or dropped, and a symlink target outside the watched hierarchy can change without a useful event for the symlink entry. The scanner therefore reconciles the filesystem, resolves physical targets, and requires scanner-owned regular files to remain strictly within the canonical library root. This keeps the watched hierarchy and the persisted source identity aligned.
+
+Internal symlinks can resolve to a canonical in-library target and are deduplicated there. External symlinks are not accepted as persistent scanner identities; user-selected external symlinks are supported only as import inputs because `ImportCoordinator` first copies and verifies their bytes into the owned library. Nonregular scanner/managed targets are rejected where opening them could block or cross an ownership boundary. The trade-off is intentional: Cuelixa does not directly track arbitrary external symlink targets as live library files.
+
+### Concurrency and playback ownership
+
+UI coordination and AVFoundation playback state stay on `@MainActor`; scanner/import/Speech work has actor owners; SQLite has its dedicated serial owner. These boundaries make mutation ownership explicit and allow generation/token/identity checks to reject stale callbacks after a scan, cancellation, track change, or shutdown. The trade-off is more explicit cancellation and handoff code than a shared mutable singleton design.
+
+`PlaybackController` does not treat `AVPlayerItem.readyToPlay` as proof that playback is actually progressing. It validates the asset asynchronously, waits for item readiness, requests playback, and presents the playback surface only after the timebase has demonstrably advanced. This avoids hiding the library or presenting a successful-playing UI for a player that never started. The trade-off is a larger state machine with observers and bounded watchdogs.
+
+### Distribution and release integrity
+
+App Sandbox remains disabled for the current direct-GitHub line because the existing persistent library contract includes a legacy `~/podcast` location that cannot be preserved correctly by merely enabling the sandbox entitlement; a real sandbox migration would require user consent, security-scoped persistence, lifecycle handling, and regression qualification. Hardened Runtime remains enabled independently. The complete reasoning and reconsideration triggers are maintained in [App Sandbox decision](SANDBOX-DECISION.md).
+
+The public build is ad-hoc signed because the project does not currently use a paid Developer ID distribution identity. That provides a code-signing seal but not Apple developer authentication or notarization, so the release documentation states those limits explicitly. The release pipeline uses exact-tree manifests, exact-version notes, checksum verification, attestations, and both hosted and independent local qualification to detect different classes of build/release drift; none is documented as an independent trust root. See [Release procedure](RELEASE.md).
+
+Swift CodeQL was evaluated for 0.7.1 using GitHub's documented Swift/manual-build compatibility settings. Initialization succeeded, but the traced Xcode build remained unreliable without an actionable supported correction while ordinary native validation was independent of CodeQL. The optional workflow was therefore removed rather than retained as a permanently failing security signal. This reduces one source of static-analysis coverage; compiler diagnostics, Xcode Analyze, tests, release integrity gates, and manual review remain required, but are not claimed to be equivalent CodeQL coverage. The repository policy is recorded in [GitHub repository controls](GITHUB-SETTINGS.md).
+
 ## Major subsystems
 
 - **`AppModel`** — MainActor coordination and published UI state. It starts library monitoring/scanning, validates track identity before playback or preparation, coordinates batch transcription/import tasks, owns shutdown sequencing, and mediates AppKit presentation.
