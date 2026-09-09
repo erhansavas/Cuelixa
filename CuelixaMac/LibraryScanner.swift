@@ -232,6 +232,8 @@ actor LibraryScanner {
 
   private func enumerateAudioURLs(fileManager fm: FileManager, failure: ScanFailureFlag) -> [URL]? {
     guard
+      let canonicalRoot = canonicalRegularOrDirectoryURL(
+        directories.library, requireDirectory: true),
       let en = fm.enumerator(
         at: directories.library,
         includingPropertiesForKeys: [.isRegularFileKey, .isSymbolicLinkKey],
@@ -247,24 +249,38 @@ actor LibraryScanner {
     for case let candidate as URL in en {
       if Task.isCancelled { return nil }
       guard Self.audioExtensions.contains(candidate.pathExtension.lowercased()) else { continue }
-      let resolved = candidate.standardizedFileURL.resolvingSymlinksInPath()
-      // The extension filter is only a naming rule. A library directory can also
-      // contain FIFOs, devices, or sockets whose names end in `.mp3`; passing one
-      // to FileHandle for hashing can block before cooperative cancellation gets
-      // another chance. Resolve first so links to regular audio remain supported,
-      // then require the resolved entry to be a regular file.
+      // Resolve the physical target with realpath(3). This rejects dangling
+      // links and loops before hashing, while containment keeps every
+      // scanner-owned identity inside the watched canonical library tree.
       guard
-        let values = try? resolved.resourceValues(forKeys: [.isRegularFileKey]),
-        values.isRegularFile == true
-      else { continue }
-      var isDirectory: ObjCBool = false
-      guard fm.fileExists(atPath: resolved.path, isDirectory: &isDirectory), !isDirectory.boolValue,
+        let resolved = canonicalRegularOrDirectoryURL(candidate, requireDirectory: false),
+        Self.isContained(resolved, inCanonicalDirectory: canonicalRoot),
         canonicalPaths.insert(resolved.path).inserted
       else { continue }
       urls.append(resolved)
     }
     urls.sort { $0.path.localizedStandardCompare($1.path) == .orderedAscending }
     return urls
+  }
+
+  private func canonicalRegularOrDirectoryURL(_ url: URL, requireDirectory: Bool) -> URL? {
+    guard url.isFileURL, let path = realpath(url.path, nil) else { return nil }
+    defer { free(path) }
+    let resolved = URL(
+      fileURLWithPath: String(cString: path), isDirectory: requireDirectory
+    ).standardizedFileURL
+    var attributes = stat()
+    guard lstat(resolved.path, &attributes) == 0 else { return nil }
+    let kind = attributes.st_mode & mode_t(S_IFMT)
+    let expected = requireDirectory ? mode_t(S_IFDIR) : mode_t(S_IFREG)
+    return kind == expected ? resolved : nil
+  }
+
+  private static func isContained(_ url: URL, inCanonicalDirectory root: URL) -> Bool {
+    let rootComponents = root.standardizedFileURL.pathComponents
+    let candidateComponents = url.standardizedFileURL.pathComponents
+    guard candidateComponents.count > rootComponents.count else { return false }
+    return zip(rootComponents, candidateComponents).allSatisfy { $0.0 == $0.1 }
   }
 
   /// Interrupted imports can leave only Cuelixa's hidden staging name. Cleanup

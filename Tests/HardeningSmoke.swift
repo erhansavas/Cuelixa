@@ -1,4 +1,5 @@
 // SPDX-License-Identifier: Apache-2.0
+import Darwin
 import Foundation
 
 private enum SmokeFailure: Error { case failed(String) }
@@ -34,6 +35,62 @@ private struct HardeningSmoke {
     let resolved = AppDirectories.resolve(home: root)
     try require(resolved.library != legacy, "legacy regular file was selected")
     try require(resolved.legacyLibraryIssue == .notDirectory, "legacy issue was not reported")
+
+    let boundaryDirectories = AppDirectories.isolated(
+      root: root.appendingPathComponent("symlink-boundary", isDirectory: true))
+    try boundaryDirectories.ensure()
+    let boundaryLibrary = boundaryDirectories.library
+    let regular = boundaryLibrary.appendingPathComponent("regular.mp3")
+    try Data("regular audio".utf8).write(to: regular)
+    let nested = boundaryLibrary.appendingPathComponent("nested", isDirectory: true)
+    try fm.createDirectory(at: nested, withIntermediateDirectories: true)
+    let internalTarget = nested.appendingPathComponent("internal.wav")
+    try Data("internal audio".utf8).write(to: internalTarget)
+    try fm.createSymbolicLink(
+      at: boundaryLibrary.appendingPathComponent("internal-link.wav"),
+      withDestinationURL: internalTarget)
+    try fm.createSymbolicLink(
+      at: boundaryLibrary.appendingPathComponent("duplicate.mp3"),
+      withDestinationURL: regular)
+
+    let externalTarget = root.appendingPathComponent("external-target.mp3")
+    try Data("external audio".utf8).write(to: externalTarget)
+    try fm.createSymbolicLink(
+      at: boundaryLibrary.appendingPathComponent("external-link.mp3"),
+      withDestinationURL: externalTarget)
+    try fm.createSymbolicLink(
+      at: boundaryLibrary.appendingPathComponent("dangling.aac"),
+      withDestinationURL: root.appendingPathComponent("missing.aac"))
+    let fifo = root.appendingPathComponent("special.fifo")
+    try require(mkfifo(fifo.path, 0o600) == 0, "FIFO fixture could not be created")
+    try fm.createSymbolicLink(
+      at: boundaryLibrary.appendingPathComponent("special.mp3"), withDestinationURL: fifo)
+
+    let boundaryDatabase = LibraryDatabase(url: boundaryDirectories.database)
+    let boundaryScanner = LibraryScanner(
+      db: boundaryDatabase, directories: boundaryDirectories,
+      metadataLoader: { _ in (duration: 1, title: nil) })
+    await boundaryScanner.reconcileNow()
+    let firstBoundaryRecords = boundaryDatabase.fileRecords() ?? [:]
+    try require(
+      Set(firstBoundaryRecords.keys) == Set([regular.path, internalTarget.path]),
+      "scanner accepted an external/dangling/special link or failed canonical deduplication")
+    let boundaryMetrics = await boundaryScanner.metrics()
+    try require(
+      boundaryMetrics.enumeratedFiles == 2, "scanner canonical target count was incorrect")
+
+    let externalImportLink = root.appendingPathComponent("imported-alias.mp3")
+    try fm.createSymbolicLink(at: externalImportLink, withDestinationURL: externalTarget)
+    let externalImport = await ImportCoordinator(directories: boundaryDirectories).importFiles([
+      externalImportLink
+    ])
+    try require(externalImport.count(.imported) == 1, "import through external symlink failed")
+    await boundaryScanner.reconcileNow()
+    let importedRecords = boundaryDatabase.fileRecords() ?? [:]
+    try require(importedRecords.count == 3, "verified symlink import was not discovered")
+    try require(
+      importedRecords.keys.allSatisfy { $0.hasPrefix(boundaryLibrary.path + "/") },
+      "scanner persisted a path outside the canonical library root")
 
     let directories = AppDirectories.isolated(root: root.appendingPathComponent("isolated"))
     try directories.ensure()
@@ -92,6 +149,6 @@ private struct HardeningSmoke {
       rollbackDatabase.fileRecords()?.keys.sorted() == [original.path],
       "failed transaction did not roll back")
 
-    print("HARDENING_IMPORT_SCANNER_BATCH_ROLLBACK=PASS")
+    print("HARDENING_IMPORT_SCANNER_BOUNDARY_BATCH_ROLLBACK=PASS")
   }
 }
