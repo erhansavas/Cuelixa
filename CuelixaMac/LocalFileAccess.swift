@@ -1,4 +1,5 @@
 // SPDX-License-Identifier: Apache-2.0
+import CryptoKit
 import Darwin
 import Foundation
 
@@ -86,6 +87,78 @@ enum LocalFileAccess {
   static func posixError() -> POSIXError {
     POSIXError(POSIXErrorCode(rawValue: errno) ?? .EIO)
   }
+}
+
+func sha256File(_ url: URL) -> String? {
+  try? sha256FileCheckingCancellation(url)
+}
+
+/// Synchronous hashing for actors that must remain non-reentrant while still
+/// reacting to cancellation between bounded read chunks.
+func sha256FileCheckingCancellation(_ url: URL, followSymlinks: Bool = true) throws -> String {
+  try Task.checkCancellation()
+  let input = try LocalFileAccess.openRegularFile(url, followSymlinks: followSymlinks)
+  defer { try? input.close() }
+  var hasher = SHA256()
+  while true {
+    try Task.checkCancellation()
+    guard let data = try input.read(upToCount: 1024 * 1024), !data.isEmpty else { break }
+    hasher.update(data: data)
+  }
+  try Task.checkCancellation()
+  return hasher.finalize().map { String(format: "%02x", $0) }.joined()
+}
+
+/// Hashes a potentially large lesson file without blocking MainActor and with
+/// cooperative cancellation between read chunks. The detached utility task is
+/// deliberately owned and awaited by its caller; it is not fire-and-forget.
+func sha256FileCancellable(_ url: URL) async throws -> String {
+  let work = Task.detached(priority: .utility) {
+    try sha256FileCheckingCancellation(url)
+  }
+  return try await withTaskCancellationHandler {
+    try await work.value
+  } onCancel: {
+    work.cancel()
+  }
+}
+
+/// Copy an audio file into stable staging while hashing it. On the normal
+/// APFS home volume, FileManager creates a copy-on-write clone rather than
+/// rewriting the whole lesson into the cache; the snapshot is then hashed in
+/// cancellable chunks. Other file systems transparently fall back to a normal
+/// copy through the same Foundation API.
+func copyAndSHA256File(from source: URL, to destination: URL) async throws -> String {
+  let work = Task.detached(priority: .utility) {
+    try Task.checkCancellation()
+    try FileManager.default.copyItem(at: source, to: destination)
+    return try sha256FileCheckingCancellation(destination, followSymlinks: false)
+  }
+
+  return try await withTaskCancellationHandler {
+    try await work.value
+  } onCancel: {
+    work.cancel()
+  }
+}
+
+struct FileSignature: Equatable, Sendable {
+  let size: Int64
+  let mtimeNS: Int64
+  let ctimeNS: Int64
+}
+
+func fileSignature(_ url: URL) -> FileSignature? {
+  var st = stat()
+  guard lstat(url.path, &st) == 0 else { return nil }
+  #if os(macOS)
+    let mt = Int64(st.st_mtimespec.tv_sec) * 1_000_000_000 + Int64(st.st_mtimespec.tv_nsec)
+    let ct = Int64(st.st_ctimespec.tv_sec) * 1_000_000_000 + Int64(st.st_ctimespec.tv_nsec)
+  #else
+    let mt: Int64 = 0
+    let ct: Int64 = 0
+  #endif
+  return .init(size: Int64(st.st_size), mtimeNS: mt, ctimeNS: ct)
 }
 
 /// A shared lease covers active imports; startup cleanup takes a nonblocking

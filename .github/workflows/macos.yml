@@ -21,7 +21,6 @@ jobs:
     timeout-minutes: 30
     env:
       DEVELOPER_DIR: /Applications/Xcode_27_beta_6.app/Contents/Developer
-      CUELIXA_BUILD_ONLY: '1'
     steps:
       - name: Checkout
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
@@ -32,17 +31,30 @@ jobs:
         shell: bash
         run: ./Scripts/verify-source-manifest.sh
 
-      - name: Verify runner and Xcode 27 toolchain
+      - name: Prove macOS 27 and Xcode 27 toolchain
         shell: bash
         run: |
           set -euo pipefail
           test "$(uname -m)" = arm64
           sw_vers
+          test "$(sw_vers -productVersion | cut -d. -f1)" = 27
           xcodebuild -version
           xcrun swiftc --version
           xcodebuild -version | grep -Fx 'Xcode 27.0'
           xcodebuild -version | grep -Fx 'Build version 27A5252f'
 
-      - name: Compile tests, build, and analyze for macOS 27
+      - name: Verify current release-note extraction
+        shell: bash
+        run: |
+          set -euo pipefail
+          settings=$(xcodebuild -project CuelixaMac.xcodeproj -scheme Cuelixa -configuration Release -showBuildSettings)
+          version=$(printf '%s\n' "$settings" | awk '/ MARKETING_VERSION = / {print $3; exit}')
+          build=$(printf '%s\n' "$settings" | awk '/ CURRENT_PROJECT_VERSION = / {print $3; exit}')
+          notes="$RUNNER_TEMP/release-notes.md"
+          ./Scripts/extract-release-notes.sh "$version" "$build" "$notes"
+          test "$(head -n 1 "$notes")" = "## Cuelixa $version (build $build)"
+          test "$(grep -c '^## Cuelixa ' "$notes")" = 1
+
+      - name: Run complete validator on macOS 27
         shell: bash
         run: ./VALIDATE-MAC.sh

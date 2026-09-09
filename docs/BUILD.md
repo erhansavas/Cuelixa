@@ -1,43 +1,49 @@
 # Build and validation
 
-These instructions apply to Cuelixa 0.7 (build 53).
+These instructions apply to Cuelixa 0.7.1 (build 54).
 
 ## Requirements
 
 - Apple silicon Mac
-- macOS 27 or later
-- Full Xcode; the current macOS 27 audit uses Xcode 27 beta 6 (`27A5252f`) and Swift 6.4
+- macOS 27.0 or later
+- Full Xcode 27
 
-The deployment target is macOS 27.0 and the shipping architecture is `arm64`.
+The 0.7.1 qualification target is macOS 27 beta 8 (`26A5425a`), Xcode 27 beta 6 (`27A5252f`), and Swift 6.4. The deployment target is macOS 27.0 and the shipping architecture is `arm64`.
 
 ## Xcode
 
-Open `CuelixaMac.xcodeproj`, select **Cuelixa → My Mac**, then build the Debug or Release configuration. Swift complete strict-concurrency checking and warnings-as-errors are enabled for the application target.
+Open `CuelixaMac.xcodeproj`, select **Cuelixa → My Mac**, then build the Debug or Release configuration. Complete strict-concurrency checking and warnings-as-errors are enabled for the application target.
 
-## Local checks
+## Complete local qualification
 
-For the current macOS 27 validation with Xcode 27 beta 6 installed in Applications, select that toolchain:
+Select the documented Xcode 27 installation and run:
 
 ```sh
 DEVELOPER_DIR=/Applications/Xcode-beta.app/Contents/Developer \
 ./VALIDATE-MAC.sh
 ```
 
-The script uses fresh DerivedData, checks the selected toolchain and project settings, builds Debug and Release, runs Analyze and deterministic smoke tests, and inspects the resulting `arm64` application binary. The default qualification environment is macOS 27.0, Xcode 27.0 (`27A5252f`), and Swift 6.4. Version overrides remain available for deliberate qualification of a newer toolchain.
+The default validator is a release gate and must run on the supported macOS 27 runtime. It uses fresh DerivedData, verifies toolchain/project/source invariants, runs deterministic smoke checks, executes the configured runtime/integration/performance/native UI tests, clean-builds Debug and Release, runs Analyze, and inspects the resulting `arm64` application metadata.
 
-The validation builds set `CODE_SIGNING_ALLOWED=NO`; native UI tests use ad-hoc signing. Validation does not change project signing settings or produce the downloadable release package.
+Validation builds set `CODE_SIGNING_ALLOWED=NO` where signing is not part of the behavior under test; native UI tests use local ad-hoc signing. The validator does not change project signing settings and does not publish a release.
 
-The native UI tests use temporary libraries and assert that their database is created there. The `DEBUG` compilation condition enables this isolation only in Debug builds. UI checks exercise keyboard navigation, search, completion persistence, sidecar playback, accessibility, and window resizing. The appearance test briefly switches the test Mac between light and dark mode and restores its original setting during teardown.
+Native UI tests use isolated temporary libraries. The `DEBUG` compilation condition enables that isolation only in Debug/test builds; the Release application uses the normal process-wide `AppPaths` resolution.
 
-## GitHub Actions
+## Hosted GitHub validation
 
-GitHub CI uses the Apple silicon `xcode-27` image with Xcode 27 beta 6 selected explicitly. [GitHub currently hosts this image on macOS 26](https://github.com/actions/runner-images/blob/main/images/macos/xcode-27-arm64-Readme.md), so workflows set `CUELIXA_BUILD_ONLY=1`: they compile all test targets and smoke executables for macOS 27, build Debug and Release, run Analyze, and verify the release bundle. They do not launch the macOS 27 app on an unsupported host.
+The permanent `macos-arm64-release` job uses GitHub's Apple silicon `xcode-27` image, selects Xcode 27 beta 6 explicitly, and fails unless the actual host reports macOS major version 27. It then runs the complete validator without build-only mode. The final candidate Actions log is the evidence for the exact hosted macOS version; this document does not substitute a mutable platform claim for that run evidence.
 
-The full default validator, including all runtime and UI tests, must pass on macOS 27 before a release. Build-only CI is not runtime qualification.
+Hosted success is still independent of the required exact-SHA qualification on the user's own supported Mac. Both gates must correspond to the immutable candidate before release.
+
+## Release-note extraction
+
+`Scripts/extract-release-notes.sh` extracts one exact `CHANGELOG.md` release section by version/build and fails if the expected heading is absent or duplicated. Permanent CI exercises this script directly and the release workflow uses the same implementation rather than maintaining separate parsing logic.
 
 ## Source integrity
 
-`SOURCE-SHA256SUMS.txt` covers every tracked file except itself and detects accidental tree drift. It is stored with the source, so it is not an independent trust root. Verify both the path set and file digests with:
+`SOURCE-SHA256SUMS.txt` covers every tracked release-tree file except itself. It detects accidental tree drift but is stored with the source and is therefore not an independent trust root.
+
+Verify both the path set and file digests with:
 
 ```sh
 ./Scripts/verify-source-manifest.sh

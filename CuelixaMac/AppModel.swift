@@ -342,6 +342,26 @@ final class AppModel: ObservableObject {
     refreshVisibleTracks()
   }
 
+  private func sourceMatchesRecordedScan(_ track: Track) -> Bool {
+    guard !track.path.isEmpty,
+      let known = db.fileSignature(path: track.path), known.0 == track.contentHash,
+      let current = fileSignature(URL(fileURLWithPath: track.path))
+    else { return false }
+    return known.1 == current
+  }
+
+  @discardableResult
+  private func requireCurrentSource(_ track: Track) -> Bool {
+    guard sourceMatchesRecordedScan(track) else {
+      refreshAndScan()
+      presentPlaybackFailure(
+        "The lesson changed or is no longer available since the last library scan. Cuelixa is rescanning the library; try again after it refreshes."
+      )
+      return false
+    }
+    return true
+  }
+
   func playTrack(_ track: Track) {
     guard !confirmedQuitInProgress, completionTrack == nil else { return }
     guard FileManager.default.fileExists(atPath: track.path) else {
@@ -384,7 +404,7 @@ final class AppModel: ObservableObject {
     prepareTrack(track)
   }
   func prepareTrack(_ track: Track) {
-    guard !confirmedQuitInProgress else { return }
+    guard !confirmedQuitInProgress, requireCurrentSource(track) else { return }
     if let previousHash = preparationHash, let previousToken = preparationToken {
       _ = transcriber.cancel(hash: previousHash, token: previousToken)
     }
@@ -509,6 +529,15 @@ final class AppModel: ObservableObject {
     all: [Track], verifiedHashes: Set<String>, generation: Int
   ) {
     guard generation == batchGeneration, batch.active else { return }
+    guard all.allSatisfy(sourceMatchesRecordedScan) else {
+      batch = BatchPresentation(
+        visible: true, cancelled: false, cancelling: false, active: false,
+        title: "Library changed", count: "",
+        track: "Cuelixa is refreshing changed lesson files.",
+        detail: "Run Prepare All again after the library refresh completes.", progress: nil)
+      refreshAndScan()
+      return
+    }
     readySubtitleHashes = verifiedHashes
     let candidates = all.filter { !verifiedHashes.contains($0.contentHash) }
     missingSubtitleCount = candidates.count
@@ -749,7 +778,9 @@ final class AppModel: ObservableObject {
   func hideBatch() { if !batch.active { batch = BatchPresentation() } }
 
   private func startPlayback(_ track: Track, srt: URL?) {
-    guard !confirmedQuitInProgress, !quitWarning, completionTrack == nil else { return }
+    guard !confirmedQuitInProgress, !quitWarning, completionTrack == nil,
+      requireCurrentSource(track)
+    else { return }
 
     // Playback preparation and the first play request are asynchronous. Keep the
     // library visible until PlaybackController proves both a playing time-control

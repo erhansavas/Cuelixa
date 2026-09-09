@@ -386,8 +386,6 @@ final class LibraryDatabase: @unchecked Sendable {
     }
   }
 
-  func existingTrack(hash: String) -> Track? { track(hash: hash) }
-
   @discardableResult
   func reconcile(seenPaths: Set<String>) -> Bool {
     queue.sync {

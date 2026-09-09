@@ -163,16 +163,6 @@ final class NativeTranscriber: ObservableObject {
     executorCancellationTask = nil
   }
 
-  // Compatibility wrapper for code that only needs a fire-and-callback request.
-  @discardableResult
-  func prepare(
-    track: Track,
-    progress: @escaping ProgressHandler,
-    completion: @escaping CompletionHandler
-  ) -> Token? {
-    request(track: track, progress: progress, completion: completion)
-  }
-
   private struct CancelKey: Hashable {
     let hash: String
     let token: Token?

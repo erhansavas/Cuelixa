@@ -2,7 +2,7 @@
 
 ## Supported version
 
-Security fixes target Cuelixa `0.7` (build `53`) on supported macOS releases.
+Security and integrity fixes target Cuelixa `0.7.1` (build `54`) on its supported macOS release line.
 
 ## Reporting a vulnerability
 
@@ -12,6 +12,10 @@ Include enough information to reproduce and assess the issue: affected version/c
 
 ## Scope
 
-Relevant reports include unsafe file handling, privilege or permission problems, unintended data disclosure, code-execution paths, integrity failures, dependency/supply-chain problems, and security-sensitive concurrency or persistence defects.
+Relevant reports include unsafe local-file handling, unintended data disclosure, code-execution paths, integrity failures, dependency/supply-chain problems, and security-sensitive concurrency or persistence defects.
 
-Cuelixa does not require users to disable Gatekeeper or System Integrity Protection. Documentation or packages that instruct users to do so are considered release defects.
+Cuelixa is an **unsandboxed local application**. It does not claim isolation from a malicious process already executing as the same macOS user. Its symlink, regular-file, bounded-read, copy-verification, content-identity, SQLite, and atomic-publication checks are defensive software-engineering boundaries around app-owned/local data; they are not a claim that Cuelixa is a security product.
+
+See [Architecture](docs/ARCHITECTURE.md) for the precise filesystem and concurrency invariants.
+
+Cuelixa does not require users to disable Gatekeeper or System Integrity Protection, change Secure Boot, use Recovery mode, or clear quarantine globally. Documentation or packages that require those workarounds are considered release defects.

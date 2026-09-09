@@ -182,10 +182,10 @@ if missing:
     raise SystemExit('native hover/selection disclosure contract missing: ' + ', '.join(missing))
 print('ROW_DISCLOSURE_CONTRACT=PASS')
 PY_DISCLOSURE
-if grep -q 'buttonBorderShape(.circle)' CuelixaMac/PlayerPanel.swift; then
+if grep -q 'buttonBorderShape(.circle)' CuelixaMac/SeekSlider.swift; then
   fail 'circle-wrapped custom transport controls reintroduced'
 fi
-if grep -q 'CuelixaDesign.identityAccent' CuelixaMac/PlayerPanel.swift; then
+if grep -q 'CuelixaDesign.identityAccent' CuelixaMac/SeekSlider.swift; then
   fail 'identity tint reintroduced into neutral transport controls'
 fi
 if grep -q 'toolbarBackgroundVisibility(.hidden, for: .windowToolbar)' CuelixaMac/MainView.swift; then
@@ -396,7 +396,6 @@ find "$APP" -type f -print0 | while IFS= read -r -d '' candidate; do
     [[ "$arches" == "arm64" ]] || fail "non-arm64 nested Mach-O: $candidate"
   fi
 done
-
 
 # Preserve the original Cuelixa product contract. The library is a
 # management surface; confirmed playback hides it and uses a movable,
