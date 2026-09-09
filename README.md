@@ -12,7 +12,7 @@
   [![License](https://img.shields.io/badge/license-Apache--2.0-blue.svg)](LICENSE)
 </div>
 
-> **Platform status:** Cuelixa 0.7.1 targets macOS 27.0 or later. macOS 27 is still beta during this release cycle, so 0.7.1 is published as a GitHub **Pre-release**.
+> **Platform status:** Cuelixa 0.7.1 targets macOS 27.0 or later. macOS 27 remains beta during this release cycle, so the permanent 0.7.1 release workflow is configured to create a GitHub **Pre-release** when a validated tag is eventually published.
 
 ## What Cuelixa does
 
@@ -66,11 +66,11 @@ See [Architecture](docs/ARCHITECTURE.md) for subsystem ownership, data flows, co
 - macOS 27.0 or later
 - Full Xcode 27 to build from source
 
-The 0.7.1 qualification target is macOS 27 beta 8 (`26A5425a`) with Xcode 27 beta 6 (`27A5252f`) and Swift 6.4. Hosted GitHub Xcode 27 runners currently provide build/Analyze evidence on a macOS 26 host; they do **not** replace the required macOS 27 runtime/UI qualification.
+The 0.7.1 qualification target is macOS 27 beta 8 (`26A5425a`) with Xcode 27 beta 6 (`27A5252f`) and Swift 6.4. Permanent GitHub CI requires its `xcode-27` host to report macOS 27 before running the complete validator; the exact host version is recorded by the final candidate Actions run. Independent exact-SHA qualification on the user's own supported Mac remains a separate release gate.
 
 ## Install
 
-Release artifacts are published on [GitHub Releases](https://github.com/erhansavas/Cuelixa/releases). For 0.7.1, use `Cuelixa-0.7.1-macOS-arm64.dmg` together with `Cuelixa-0.7.1-macOS-arm64.dmg.sha256`.
+Release artifacts are published on [GitHub Releases](https://github.com/erhansavas/Cuelixa/releases). When 0.7.1 passes every release gate, its intended artifacts are `Cuelixa-0.7.1-macOS-arm64.dmg` and `Cuelixa-0.7.1-macOS-arm64.dmg.sha256`.
 
 1. Open the DMG.
 2. Drag **Cuelixa** to **Applications**.
@@ -103,7 +103,7 @@ DEVELOPER_DIR=/Applications/Xcode-beta.app/Contents/Developer \
 ./VALIDATE-MAC.sh
 ```
 
-The validator checks source integrity/formatting, application and test compilation, Debug and Release builds, static analysis, deterministic smoke coverage, runtime/integration/performance tests, native UI scenarios, playback behavior, architecture guards, and final bundle metadata. On an unsupported hosted macOS 26 runner, `CUELIXA_BUILD_ONLY=1` deliberately compiles runtime targets without executing macOS 27 tests.
+The validator checks source integrity/formatting, application and test compilation, Debug and Release builds, static analysis, deterministic smoke coverage, runtime/integration/performance tests, native UI scenarios, playback behavior, architecture guards, and final bundle metadata. Permanent pull-request CI runs this complete validator only after proving the hosted machine is an arm64 macOS 27 host with the required Xcode build.
 
 See [Build](docs/BUILD.md) and [Qualification](docs/QUALIFICATION.md).
 
@@ -117,7 +117,7 @@ See [Privacy](docs/PRIVACY.md), [Security](SECURITY.md), [Architecture](docs/ARC
 
 ## Release integrity
 
-The permanent release workflow derives version/build identity from Xcode, verifies the complete source manifest, compiles/analyzes the macOS 27 target, builds an `arm64` app with Hardened Runtime, applies an ad-hoc signature, creates and remounts a read-only DMG, freezes and verifies SHA-256, and requests GitHub artifact attestations. Runtime/UI qualification must already have passed on the exact macOS 27 candidate SHA before merge/tag.
+The permanent release workflow derives version/build identity from Xcode, verifies the complete source manifest, compiles/analyzes the macOS 27 target, builds an `arm64` app with Hardened Runtime, applies an ad-hoc signature, creates and remounts a read-only DMG, freezes and verifies SHA-256, requests GitHub artifact attestations, and extracts only the matching changelog section for release notes. While macOS 27 remains beta, it deterministically marks the GitHub release as a Pre-release. Hosted and independent exact-SHA runtime qualification must already have passed before merge/tag.
 
 `SOURCE-SHA256SUMS.txt` detects accidental release-tree drift; because it is stored in the same repository, it is not an independent trust root.
 
