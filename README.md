@@ -5,13 +5,26 @@
   </picture>
   <h1>Cuelixa</h1>
   <p><strong>Local-first listening practice for Apple silicon Macs.</strong></p>
-  <p>Listen to local lesson audio, resume where you left off, and follow synchronized subtitles in a compact floating overlay.</p>
-  <p><strong>Cuelixa 0.7 · Build 53</strong></p>
+  <p>Organize local lesson audio, resume where you left off, prepare subtitles on-device, and keep synchronized text in a compact floating player.</p>
+  <p><strong>Cuelixa 0.7.1 · Build 54</strong></p>
+
+  [![macOS CI](https://github.com/erhansavas/Cuelixa/actions/workflows/macos.yml/badge.svg)](https://github.com/erhansavas/Cuelixa/actions/workflows/macos.yml)
+  [![License](https://img.shields.io/badge/license-Apache--2.0-blue.svg)](LICENSE)
 </div>
 
-## Screenshots
+> **Platform status:** Cuelixa 0.7.1 targets macOS 27.0 or later. macOS 27 is still beta during this release cycle, so 0.7.1 is published as a GitHub **Pre-release**.
 
-Cuelixa on macOS 27, shown with sample lessons. The library preview follows your light or dark appearance.
+## What Cuelixa does
+
+Cuelixa is a native macOS application for focused listening practice. It keeps the lesson library and listening state local, uses Apple Speech for on-device English transcription, and presents subtitles alongside AVFoundation playback without requiring an account or cloud backend.
+
+- Browse/search local lessons and track completion or resume position.
+- Use an existing same-basename SRT sidecar or prepare synchronized subtitles on-device.
+- Queue subtitle preparation while keeping one Speech transcription job active at a time.
+- Control playback from the floating subtitle overlay, keyboard shortcuts, or macOS Now Playing controls.
+- Import supported audio by drag-and-drop while preserving the original source file.
+
+## Screenshots
 
 <p align="center">
   <picture>
@@ -19,35 +32,45 @@ Cuelixa on macOS 27, shown with sample lessons. The library preview follows your
     <img src="docs/screenshots/cuelixa-library-light.png" alt="Cuelixa lesson library with completion tracking and prepared subtitles" width="100%">
   </picture>
   <br>
-  <sub>Manage lessons in a native library that follows your Mac’s appearance</sub>
+  <sub>Native library navigation with completion and subtitle status</sub>
 </p>
 
 <p align="center">
   <img src="docs/screenshots/cuelixa-subtitle-options.png" alt="Cuelixa subtitle preparation options" width="100%">
   <br>
-  <sub>Prepare subtitles on-device or start listening without them</sub>
+  <sub>Prepare subtitles locally or listen without them</sub>
 </p>
 
 <p align="center">
   <img src="docs/screenshots/cuelixa-playback-overlay.png" alt="Cuelixa subtitle-first playback overlay" width="100%">
   <br>
-  <sub>Keep synchronized subtitles visible while you work</sub>
+  <sub>Movable subtitle/transport overlay during active playback</sub>
 </p>
 
-## Features
+## Engineering highlights
 
-- **Organize your listening.** Browse and search local lessons, track completion, and resume from your saved position.
-- **Follow along with subtitles.** Use existing SRT files or prepare subtitles on-device, individually or in a batch.
-- **Keep playback within reach.** Use the floating subtitle overlay, keyboard shortcuts, and macOS Now Playing controls.
-- **Keep your library local.** No account, advertisements, analytics, or cloud backend.
+- Native Swift, SwiftUI and AppKit; no third-party package dependencies.
+- AVFoundation playback state machine with async asset validation, seek/start watchdogs, stale-callback generation checks, and verified first-timebase progression before playback presentation.
+- Apple Speech transcription through an actor-owned executor with explicit cancellation and a verified staging snapshot before durable transcript publication.
+- SQLite persistence with serialized connection ownership, WAL mode, busy timeout, foreign keys, and transactional library reconciliation.
+- Defensive local-file handling: canonical scanner containment, intentional symlink boundaries, regular-file checks, bounded reads, import byte verification, and atomic managed transcript publication.
+- Content-addressed transcript cache that binds verified SRT bytes to the lesson audio SHA-256.
+- Strict Swift concurrency and warnings-as-errors in the application target, plus unit/integration, performance, native UI, smoke, build, Analyze, and source-manifest gates.
+- GitHub Actions use immutable action SHAs and least-privilege workflow permissions for their purpose.
 
-Requires an Apple silicon Mac and macOS 27 or later. Current validation covers macOS 27; see [testing status](docs/QUALIFICATION.md) for coverage and limitations.
+See [Architecture](docs/ARCHITECTURE.md) for subsystem ownership, data flows, concurrency, invariants, and the security boundary.
+
+## Requirements
+
+- Apple silicon Mac (`arm64`)
+- macOS 27.0 or later
+- Full Xcode 27 to build from source
+
+The 0.7.1 qualification target is macOS 27 beta 8 (`26A5425a`) with Xcode 27 beta 6 (`27A5252f`) and Swift 6.4. Hosted GitHub Xcode 27 runners currently provide build/Analyze evidence on a macOS 26 host; they do **not** replace the required macOS 27 runtime/UI qualification.
 
 ## Install
 
-Download **Cuelixa 0.7 (build 53)** from [GitHub Releases](https://github.com/erhansavas/Cuelixa/releases/tag/v0.7). Choose `Cuelixa-0.7-macOS-arm64.dmg` and its matching `.sha256` checksum file. The app requires **macOS 27 or later** and **Apple silicon**.
-
-To install:
+Release artifacts are published on [GitHub Releases](https://github.com/erhansavas/Cuelixa/releases). For 0.7.1, use `Cuelixa-0.7.1-macOS-arm64.dmg` together with `Cuelixa-0.7.1-macOS-arm64.dmg.sha256`.
 
 1. Open the DMG.
 2. Drag **Cuelixa** to **Applications**.
@@ -55,11 +78,11 @@ To install:
 
 ### First launch
 
-Public builds are ad-hoc signed and are not notarized by Apple. If macOS blocks the first launch, try to open Cuelixa once, then go to **System Settings → Privacy & Security → Open Anyway** and confirm **Open**. No Terminal command or change to Gatekeeper or System Integrity Protection is required.
+The free GitHub build is ad-hoc signed with Hardened Runtime and is not claimed to be Developer ID signed or notarized. If macOS blocks the first launch, try opening Cuelixa once, then use **System Settings → Privacy & Security → Open Anyway** and confirm **Open**. No Terminal command, SIP change, Gatekeeper disablement, or Recovery-mode change is required.
 
-## Library and data
+## Library and local data
 
-New installations use `~/Music/Cuelixa`. Existing `~/podcast` libraries remain supported without destructive migration.
+New installations use `~/Music/Cuelixa`. A valid existing `~/podcast` library remains supported without destructive migration.
 
 Supported source extensions are `mp3`, `m4a`, `aac`, `flac`, `wav`, `ogg`, and `opus`; actual decoding depends on AVFoundation support in the installed macOS release.
 
@@ -69,32 +92,45 @@ Application-owned data is stored under:
 - `~/Library/Application Support/Cuelixa/Transcripts/`
 - `~/Library/Caches/Cuelixa/`
 
-Same-basename `.srt` sidecars remain usable in place. Cuelixa does not rename source audio.
+Same-basename `.srt` sidecars remain user-owned and usable in place. Cuelixa does not rename source audio.
 
 ## Build and test
 
-Cuelixa uses SwiftUI, AppKit, AVFoundation, and Apple Speech, with no third-party package dependencies. Open `CuelixaMac.xcodeproj` in full Xcode, select **Cuelixa / My Mac**, and build.
-
-The current validation environment is macOS 27, Xcode 27 beta 6 (`27A5252f`), and Swift 6.4. Run the complete checks with:
+Open `CuelixaMac.xcodeproj` in full Xcode, select **Cuelixa → My Mac**, and build. The complete qualification command is:
 
 ```sh
 DEVELOPER_DIR=/Applications/Xcode-beta.app/Contents/Developer \
 ./VALIDATE-MAC.sh
 ```
 
-The validator runs unit, integration, performance, and native UI tests, clean Debug and Release builds, static analysis, playback checks, and source-integrity checks. See [build instructions](docs/BUILD.md) and [testing status](docs/QUALIFICATION.md) for details.
+The validator checks source integrity/formatting, application and test compilation, Debug and Release builds, static analysis, deterministic smoke coverage, runtime/integration/performance tests, native UI scenarios, playback behavior, architecture guards, and final bundle metadata. On an unsupported hosted macOS 26 runner, `CUELIXA_BUILD_ONLY=1` deliberately compiles runtime targets without executing macOS 27 tests.
 
-## Privacy and security
+See [Build](docs/BUILD.md) and [Qualification](docs/QUALIFICATION.md).
 
-Audio, listening progress, and prepared subtitles remain on your Mac. Apple Speech may ask macOS to download on-device speech assets when needed. Cuelixa does not require Full Disk Access, Accessibility, or Input Monitoring permission.
+## Privacy and security posture
 
-See [Privacy](docs/PRIVACY.md), [Security](SECURITY.md), and the [sandbox decision record](docs/SANDBOX-DECISION.md).
+Cuelixa has no application-managed backend, account, advertising, analytics, or telemetry SDK. Audio, listening progress, and managed subtitles remain on the Mac; Apple Speech may ask macOS to install Apple-managed on-device speech assets.
+
+Cuelixa is an **unsandboxed local application** and does not claim isolation from a malicious process already running as the same macOS user. Its filesystem hardening is defensive correctness around local files and app-owned state, not a claim that Cuelixa is a security product.
+
+See [Privacy](docs/PRIVACY.md), [Security](SECURITY.md), [Architecture](docs/ARCHITECTURE.md), and the [sandbox decision](docs/SANDBOX-DECISION.md).
 
 ## Release integrity
 
-The release workflow verifies source checksums, compiles the app and test targets, runs static analysis, and packages an ad-hoc-signed app in a read-only DMG. Runtime and UI qualification run on macOS 27 before release. Published packages include a SHA-256 checksum and GitHub build-provenance attestations. `SOURCE-SHA256SUMS.txt` detects accidental source changes; it is not an independent trust root.
+The permanent release workflow derives version/build identity from Xcode, verifies the complete source manifest, compiles/analyzes the macOS 27 target, builds an `arm64` app with Hardened Runtime, applies an ad-hoc signature, creates and remounts a read-only DMG, freezes and verifies SHA-256, and requests GitHub artifact attestations. Runtime/UI qualification must already have passed on the exact macOS 27 candidate SHA before merge/tag.
 
-See [Release](docs/RELEASE.md) and [Publication](docs/PUBLICATION.md).
+`SOURCE-SHA256SUMS.txt` detects accidental release-tree drift; because it is stored in the same repository, it is not an independent trust root.
+
+See [Release procedure](docs/RELEASE.md).
+
+## Documentation
+
+- [Architecture](docs/ARCHITECTURE.md) — subsystem ownership, flows, concurrency, invariants, security boundary
+- [Build](docs/BUILD.md) — toolchain and validation commands
+- [Qualification](docs/QUALIFICATION.md) — what the automated and manual gates establish
+- [Release](docs/RELEASE.md) — release preparation, packaging and publication
+- [Privacy](docs/PRIVACY.md) and [Security](SECURITY.md) — data handling and vulnerability scope
+- [Historical audits](docs/audits/) — preserved engineering evidence, not current architecture
 
 ## License
 
