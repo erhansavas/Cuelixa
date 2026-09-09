@@ -6,7 +6,7 @@ This document defines what must be proven. It intentionally does not embed a mut
 
 ## Complete validator
 
-`VALIDATE-MAC.sh` is the authoritative local qualification entry point. In normal mode on macOS 27 it covers:
+`VALIDATE-MAC.sh` is the authoritative qualification entry point. In normal mode on macOS 27 it covers:
 
 - source-manifest verification and tracked-source/project membership;
 - Swift parsing/formatting and project/resource integrity;
@@ -17,8 +17,7 @@ This document defines what must be proven. It intentionally does not embed a mut
 - native UI scenarios using an isolated test library;
 - clean Debug and Release builds;
 - Xcode Analyze;
-- deployment target, `arm64` architecture, bundle identifier, version/build, and Release-bundle checks;
-- the same release-note extraction script used by the permanent release workflow.
+- deployment target, `arm64` architecture, bundle identifier, version/build, and Release-bundle checks.
 
 The final 0.7.1 candidate must pass the **complete** validator on an actual supported macOS 27 runtime. The complete output is release evidence and must correspond to the exact candidate SHA.
 
@@ -30,9 +29,9 @@ The scanner performance fixture retains the legacy per-record database path as a
 
 ## Hosted CI boundary
 
-GitHub's `xcode-27` Apple silicon image supplies the Xcode 27 beta 6 toolchain but currently runs a macOS 26 host. The permanent `macos-arm64-release` job therefore runs the validator with `CUELIXA_BUILD_ONLY=1`.
+The permanent `macos-arm64-release` job uses GitHub's Apple silicon `xcode-27` image and explicitly requires the host to report macOS major version 27 before running the complete validator. It also records `sw_vers`, Xcode, and Swift versions in the Actions log. The final candidate run, not an assumption in this document, proves the hosted runtime actually used for qualification.
 
-That mode compiles the macOS 27 application/test/smoke targets, builds Debug and Release, runs Analyze, and verifies source/bundle metadata, but it deliberately **does not execute** binaries that require the macOS 27 runtime. Hosted success is build/compile/Analyze evidence only.
+Hosted qualification and the independent exact-SHA run on the user's own supported Mac are separate release gates. Hosted success does not replace the user-machine gate.
 
 ## What qualification does not claim
 
@@ -49,10 +48,10 @@ These are truthful qualification boundaries, not known defects unless a failing 
 
 ## Historical evidence
 
-Earlier engineering qualification and macOS 26/0.6.66 evidence is preserved under [Historical audits](audits/). It is not current architecture or proof of the 0.7.1 candidate.
+Earlier engineering evidence is preserved under [Historical audits](audits/). It is not current architecture or proof of the 0.7.1 candidate.
 
 ## Release package
 
-After the exact candidate passes local macOS 27 qualification and repository gates, the tagged release workflow independently verifies package identity, produces an `arm64` read-only DMG, verifies the ad-hoc Hardened Runtime signature, freezes/verifies SHA-256, and requests GitHub artifact attestations. See [RELEASE.md](RELEASE.md).
+After the exact candidate passes hosted and independent macOS 27 qualification plus repository/presentation gates, the tagged release workflow independently verifies package identity, produces an `arm64` read-only DMG, verifies the ad-hoc Hardened Runtime signature, freezes/verifies SHA-256, and requests GitHub artifact attestations. See [RELEASE.md](RELEASE.md).
 
 Ad-hoc signing is not Developer ID signing or notarization.
