@@ -6,13 +6,13 @@
   <h1>Cuelixa</h1>
   <p><strong>Local-first listening practice for Apple silicon Macs.</strong></p>
   <p>Organize local lesson audio, resume where you left off, prepare subtitles on-device, and keep synchronized text in a compact floating player.</p>
-  <p><strong>Cuelixa 0.7.1 · Build 54</strong></p>
+  <p><strong>Cuelixa 0.7.2 · Build 55</strong></p>
 
   [![macOS CI](https://github.com/erhansavas/Cuelixa/actions/workflows/macos.yml/badge.svg)](https://github.com/erhansavas/Cuelixa/actions/workflows/macos.yml)
   [![License](https://img.shields.io/badge/license-Apache--2.0-blue.svg)](LICENSE)
 </div>
 
-> **Platform status:** Cuelixa 0.7.1 targets macOS 27.0 or later. macOS 27 remains beta during this release cycle, so Cuelixa 0.7.1 is published as a GitHub **Pre-release**.
+> **Platform status:** Cuelixa 0.7.2 targets macOS 27.0 or later. macOS 27 remains beta during this release cycle, so Cuelixa 0.7.2 is published as a GitHub **Pre-release**.
 
 ## What Cuelixa does
 
@@ -66,11 +66,11 @@ See [Architecture](docs/ARCHITECTURE.md) for subsystem ownership, data flows, co
 - macOS 27.0 or later
 - Full Xcode 27 to build from source
 
-Cuelixa 0.7.1 was qualified against macOS 27 beta 8 (`26A5425a`) with Xcode 27 beta 6 (`27A5252f`) and Swift 6.4. Permanent GitHub CI requires its `xcode-27` host to report macOS 27 before running the complete validator; the exact hosted environment is recorded in Actions. The released 0.7.1 tree also passed independent exact-SHA qualification on the maintainer's supported Apple silicon Mac.
+Cuelixa 0.7.2 was qualified against macOS 27 beta 8 (`26A5425a`) with Xcode 27 beta 6 (`27A5252f`) and Swift 6.4. Permanent GitHub CI requires its `xcode-27` host to report macOS 27 before running the complete validator; the exact hosted environment is recorded in Actions. The released 0.7.2 tree also passed independent exact-SHA qualification on the maintainer's supported Apple silicon Mac.
 
 ## Install
 
-Release artifacts are published on [GitHub Releases](https://github.com/erhansavas/Cuelixa/releases). The v0.7.1 release provides `Cuelixa-0.7.1-macOS-arm64.dmg` and `Cuelixa-0.7.1-macOS-arm64.dmg.sha256`.
+Release artifacts are published on [GitHub Releases](https://github.com/erhansavas/Cuelixa/releases). The v0.7.2 release provides `Cuelixa-0.7.2-macOS-arm64.dmg` and `Cuelixa-0.7.2-macOS-arm64.dmg.sha256`.
 
 1. Open the DMG.
 2. Drag **Cuelixa** to **Applications**.

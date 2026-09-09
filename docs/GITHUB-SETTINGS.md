@@ -13,7 +13,7 @@ The active `Protect main` ruleset currently applies to the default branch and ha
 - requires review-thread resolution;
 - requires the `macos-arm64-release` status check with strict required-status behavior.
 
-The ruleset allows squash and rebase merge methods. The 0.7.1 release process does not weaken or bypass these protections.
+The ruleset allows squash and rebase merge methods. The 0.7.2 release process does not weaken or bypass these protections.
 
 ## Workflow policy
 

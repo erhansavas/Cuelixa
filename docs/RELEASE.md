@@ -1,4 +1,4 @@
-# Cuelixa 0.7.1 release procedure
+# Cuelixa 0.7.2 release procedure
 
 This is the source of truth for preparing, qualifying, packaging, and publishing the GitHub release.
 
@@ -6,16 +6,16 @@ Cuelixa's public build is distributed without a paid Apple Developer ID identity
 
 ## Release identity
 
-- Marketing version: `0.7.1`
-- Build: `54`
-- Tag: `v0.7.1`
+- Marketing version: `0.7.2`
+- Build: `55`
+- Tag: `v0.7.2`
 - Application identifier: `io.github.erhansavas.Cuelixa`
 - Architecture: `arm64`
 - Minimum system: macOS `27.0`
-- DMG: `Cuelixa-0.7.1-macOS-arm64.dmg`
-- Checksum: `Cuelixa-0.7.1-macOS-arm64.dmg.sha256`
+- DMG: `Cuelixa-0.7.2-macOS-arm64.dmg`
+- Checksum: `Cuelixa-0.7.2-macOS-arm64.dmg.sha256`
 
-During the 0.7.1 qualification window, macOS 27 remains beta software. The permanent release workflow must therefore create 0.7.1 as a GitHub **Pre-release**. This is encoded in the workflow rather than corrected manually afterward.
+During the 0.7.2 qualification window, macOS 27 remains beta software. The permanent release workflow must therefore create 0.7.2 as a GitHub **Pre-release**. This is encoded in the workflow rather than corrected manually afterward.
 
 ## Release gates
 
@@ -34,7 +34,7 @@ Any source or documentation change after full macOS 27 qualification creates a n
 
 ## Packaging and publication
 
-The permanent `.github/workflows/release-dmg.yml` performs the package-side evidence after `v0.7.1` is created:
+The permanent `.github/workflows/release-dmg.yml` performs the package-side evidence after `v0.7.2` is created:
 
 1. Derive marketing version/build from Xcode and require the tag to equal `v$VERSION`.
 2. Verify the complete source manifest, `arm64` runner/toolchain assumptions, and macOS 27 deployment target.
