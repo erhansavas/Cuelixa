@@ -36,7 +36,7 @@ jobs:
           languages: swift
           build-mode: manual
 
-      - name: Build traced macOS target
+      - name: Build traced arm64 macOS target
         shell: bash
         run: |
           set -euo pipefail
@@ -49,6 +49,9 @@ jobs:
             -configuration Release \
             -destination 'generic/platform=macOS' \
             CODE_SIGNING_ALLOWED=NO \
+            ARCHS=arm64 \
+            ONLY_ACTIVE_ARCH=YES \
+            MACOSX_DEPLOYMENT_TARGET=27.0 \
             clean build
 
       - name: Analyze
