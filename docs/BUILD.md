@@ -8,7 +8,7 @@ These instructions apply to Cuelixa 0.7.2 (build 55).
 - macOS 27.0 or later
 - Full Xcode 27
 
-The 0.7.2 qualification target is macOS 27 beta 8 (`26A5425a`), Xcode 27 beta 6 (`27A5252f`), and Swift 6.4. The deployment target is macOS 27.0 and the shipping architecture is `arm64`.
+The 0.7.2 release qualification target is macOS 27 Release Candidate (`26A428`), Xcode 27 Release Candidate (`27A266a`), and Swift 6.4. The deployment target is macOS 27.0 and the shipping architecture is `arm64`.
 
 ## Xcode
 
@@ -19,7 +19,7 @@ Open `CuelixaMac.xcodeproj`, select **Cuelixa → My Mac**, then build the Debug
 Select the documented Xcode 27 installation and run:
 
 ```sh
-DEVELOPER_DIR=/Applications/Xcode-beta.app/Contents/Developer \
+DEVELOPER_DIR=/Applications/Xcode.app/Contents/Developer \
 ./VALIDATE-MAC.sh
 ```
 
@@ -31,9 +31,9 @@ Native UI tests use isolated temporary libraries. The `DEBUG` compilation condit
 
 ## Hosted GitHub validation
 
-The permanent `macos-arm64-release` job uses GitHub's Apple silicon `xcode-27` image, selects Xcode 27 beta 6 explicitly, and fails unless the actual host reports macOS major version 27. It then runs the complete validator without build-only mode. The final candidate Actions log is the evidence for the exact hosted macOS version; this document does not substitute a mutable platform claim for that run evidence.
+The permanent `macos-arm64-release` job uses GitHub's Apple silicon `xcode-27` image, requires an arm64 macOS 27.0 host and Xcode 27.0 with Swift 6.4, records the exact hosted macOS/Xcode builds, and runs the complete validator against that hosted environment. GitHub's image can lag Apple's current Release Candidate, so hosted CI is an independent compatibility gate rather than the source of the exact RC build identity.
 
-Hosted success is still independent of the required exact-SHA qualification on the user's own supported Mac. Both gates must correspond to the immutable candidate before release.
+Release qualification additionally requires the immutable candidate to pass the complete validator on the maintainer's exact macOS 27 RC (`26A428`) / Xcode 27 RC (`27A266a`) environment. Both gates must correspond to the same candidate tree before release.
 
 ## Release-note extraction
 

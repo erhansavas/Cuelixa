@@ -12,7 +12,7 @@
   [![License](https://img.shields.io/badge/license-Apache--2.0-blue.svg)](LICENSE)
 </div>
 
-> **Platform status:** Cuelixa 0.7.2 targets macOS 27.0 or later. macOS 27 remains beta during this release cycle, so Cuelixa 0.7.2 is published as a GitHub **Pre-release**.
+> **Platform status:** Cuelixa 0.7.2 targets macOS 27.0 or later. macOS 27 is in Release Candidate phase during this release cycle, so Cuelixa 0.7.2 is designated as a GitHub **Pre-release**.
 
 ## What Cuelixa does
 
@@ -66,11 +66,11 @@ See [Architecture](docs/ARCHITECTURE.md) for subsystem ownership, data flows, co
 - macOS 27.0 or later
 - Full Xcode 27 to build from source
 
-Cuelixa 0.7.2 was qualified against macOS 27 beta 8 (`26A5425a`) with Xcode 27 beta 6 (`27A5252f`) and Swift 6.4. Permanent GitHub CI requires its `xcode-27` host to report macOS 27 before running the complete validator; the exact hosted environment is recorded in Actions. The released 0.7.2 tree also passed independent exact-SHA qualification on the maintainer's supported Apple silicon Mac.
+Cuelixa 0.7.2 qualification targets macOS 27 Release Candidate (`26A428`) with Xcode 27 Release Candidate (`27A266a`) and Swift 6.4. Permanent GitHub CI runs the complete validator on GitHub's available arm64 macOS 27 `xcode-27` image and records the exact hosted OS/Xcode builds. Because hosted images can lag Apple's current RC, release qualification separately requires the exact 0.7.2 candidate to pass on the maintainer's RC environment before merge/tag.
 
 ## Install
 
-Release artifacts are published on [GitHub Releases](https://github.com/erhansavas/Cuelixa/releases). The v0.7.2 release provides `Cuelixa-0.7.2-macOS-arm64.dmg` and `Cuelixa-0.7.2-macOS-arm64.dmg.sha256`.
+Release artifacts are published on [GitHub Releases](https://github.com/erhansavas/Cuelixa/releases). The v0.7.2 release package consists of `Cuelixa-0.7.2-macOS-arm64.dmg` and `Cuelixa-0.7.2-macOS-arm64.dmg.sha256`.
 
 1. Open the DMG.
 2. Drag **Cuelixa** to **Applications**.
@@ -117,7 +117,7 @@ See [Privacy](docs/PRIVACY.md), [Security](SECURITY.md), [Architecture](docs/ARC
 
 ## Release integrity
 
-The permanent release workflow derives version/build identity from Xcode, verifies the complete source manifest, compiles/analyzes the macOS 27 target, builds an `arm64` app with Hardened Runtime, applies an ad-hoc signature, creates and remounts a read-only DMG, freezes and verifies SHA-256, requests GitHub artifact attestations, and extracts only the matching changelog section for release notes. While macOS 27 remains beta, it deterministically marks the GitHub release as a Pre-release. Hosted and independent exact-SHA runtime qualification must already have passed before merge/tag.
+For 0.7.2, the release DMG is built from the exact qualified tree on macOS 27 Release Candidate (`26A428`) with Xcode 27 Release Candidate (`27A266a`), then ad-hoc signed with Hardened Runtime, remounted, and frozen with SHA-256 before publication. GitHub's release-verification workflow independently checks the immutable tag, source manifest, exact changelog notes, checksum, packaged metadata/architecture/signature, and requests artifact attestations after publication. Hosted compatibility CI and independent exact-SHA RC qualification must pass before merge/tag.
 
 `SOURCE-SHA256SUMS.txt` detects accidental release-tree drift; because it is stored in the same repository, it is not an independent trust root.
 

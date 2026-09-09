@@ -15,7 +15,7 @@ Cuelixa's public build is distributed without a paid Apple Developer ID identity
 - DMG: `Cuelixa-0.7.2-macOS-arm64.dmg`
 - Checksum: `Cuelixa-0.7.2-macOS-arm64.dmg.sha256`
 
-During the 0.7.2 qualification window, macOS 27 remains beta software. The permanent release workflow must therefore create 0.7.2 as a GitHub **Pre-release**. This is encoded in the workflow rather than corrected manually afterward.
+During the 0.7.2 qualification window, macOS 27 is in Release Candidate phase. Cuelixa 0.7.2 is therefore published as a GitHub **Pre-release**.
 
 ## Release gates
 
@@ -23,8 +23,8 @@ A tag must not be created until all of these are true for the exact candidate tr
 
 1. The complete source/documentation/repository review is finished and the candidate diff is intentional.
 2. `SOURCE-SHA256SUMS.txt` exactly covers the tracked release tree and `Scripts/verify-source-manifest.sh` passes.
-3. GitHub hosted CI proves an arm64 macOS 27 host, the documented Xcode 27 toolchain, and passes the complete validator for the immutable candidate.
-4. The full `VALIDATE-MAC.sh` run independently passes on the user's Apple silicon Mac running the supported macOS 27 runtime and documented Xcode 27 toolchain for that exact SHA.
+3. GitHub hosted CI proves an arm64 macOS 27.0 / Xcode 27.0 environment, records its exact hosted builds, and passes the complete validator for the immutable candidate. The hosted image is an independent compatibility gate and may lag Apple's current RC.
+4. The full `VALIDATE-MAC.sh` run independently passes for that exact SHA on the maintainer's Apple silicon Mac running macOS 27 Release Candidate build `26A428` with Xcode 27 Release Candidate build `27A266a`.
 5. Any included CodeQL workflow has demonstrated a successful Swift analysis; otherwise CodeQL is omitted rather than kept as a broken ceremonial check.
 6. Branch protection requirements are satisfied and the PR is merged without bypassing the `main` ruleset.
 7. The merged `main` tree is verified to correspond to the qualified candidate before tagging.
@@ -34,18 +34,18 @@ Any source or documentation change after full macOS 27 qualification creates a n
 
 ## Packaging and publication
 
-The permanent `.github/workflows/release-dmg.yml` performs the package-side evidence after `v0.7.2` is created:
+GitHub's hosted `xcode-27` image can lag Apple's current Release Candidate, so the 0.7.2 DMG is built only on the exact RC qualification environment. After the immutable candidate has passed both release gates:
 
-1. Derive marketing version/build from Xcode and require the tag to equal `v$VERSION`.
-2. Verify the complete source manifest, `arm64` runner/toolchain assumptions, and macOS 27 deployment target.
-3. Compile tests, build Debug/Release, and run Analyze through the repository validator as an additional package-side check; this does not replace the already-required exact-candidate runtime qualifications.
-4. Build the Release application with project Hardened Runtime settings preserved.
-5. Apply an ad-hoc signature and verify the bundle, metadata, architecture, minimum system, signature, and absence of `get-task-allow`.
-6. Create a read-only DMG containing `Cuelixa.app` and an Applications symlink; verify, mount, and re-check the packaged app.
-7. Generate SHA-256 only after the DMG is frozen, then verify the checksum file.
-8. Request GitHub artifact attestations for the frozen DMG and checksum.
-9. Extract **only** the exact current `CHANGELOG.md` section using `Scripts/extract-release-notes.sh`; extraction fails if the current heading is absent or duplicated.
-10. Publish the matching assets and current notes under the immutable tag as a GitHub Pre-release.
+1. Check out the exact qualified candidate in an isolated worktree and verify `SOURCE-SHA256SUMS.txt`.
+2. Re-run the complete validator on macOS 27 RC build `26A428` with `/Applications/Xcode.app` reporting Xcode 27.0 build `27A266a`.
+3. Build the Release app from that exact tree, verify version `0.7.2`, build `55`, identifier `io.github.erhansavas.Cuelixa`, minimum macOS `27.0`, and `arm64` architecture.
+4. Apply an ad-hoc signature with Hardened Runtime, verify it strictly, and require that `get-task-allow` is absent.
+5. Create a read-only DMG containing `Cuelixa.app` and an Applications symlink; verify and remount it, then repeat bundle/architecture/signature checks from the mounted image.
+6. Generate `Cuelixa-0.7.2-macOS-arm64.dmg.sha256` only after the DMG is frozen and verify the checksum.
+7. Extract only `## Cuelixa 0.7.2 (build 55)` from `CHANGELOG.md` for the release notes.
+8. After the protected PR is merged, prove the merged `main` tree equals the qualified candidate tree, create immutable tag `v0.7.2` at that merged commit, and publish the frozen DMG/checksum with the exact notes as a GitHub Pre-release.
+
+After publication, `.github/workflows/release-dmg.yml` independently checks out the immutable tag, verifies the source manifest/release identity/exact notes, downloads the published DMG and checksum, verifies and remounts the image, re-checks metadata/architecture/ad-hoc Hardened Runtime signature, and requests GitHub artifact attestations. It deliberately does not rebuild 0.7.2 on a hosted toolchain that may lag the RC used for the release artifact.
 
 The tag and published artifacts are not moved or rewritten. A correction uses a new version/build, tag, and checksums.
 

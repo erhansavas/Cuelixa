@@ -1,6 +1,6 @@
 # Qualification — Cuelixa 0.7.2 (build 55)
 
-Cuelixa 0.7.2 requires an Apple silicon Mac running macOS 27.0 or later. The release qualification target is macOS 27 beta 8 (`26A5425a`), Xcode 27 beta 6 (`27A5252f`), and Swift 6.4.
+Cuelixa 0.7.2 requires an Apple silicon Mac running macOS 27.0 or later. The release qualification target is macOS 27 Release Candidate (`26A428`), Xcode 27 Release Candidate (`27A266a`), and Swift 6.4.
 
 This document defines what must be proven. It intentionally does not embed a mutable “latest successful run” claim that would require changing the source tree after the exact candidate SHA has been qualified. The PR/Actions/release evidence records the actual run result for that immutable candidate.
 
@@ -29,9 +29,9 @@ The scanner performance fixture retains the legacy per-record database path as a
 
 ## Hosted CI boundary
 
-The permanent `macos-arm64-release` job uses GitHub's Apple silicon `xcode-27` image and explicitly requires the host to report macOS major version 27 before running the complete validator. It also records `sw_vers`, Xcode, and Swift versions in the Actions log. The final candidate run, not an assumption in this document, proves the hosted runtime actually used for qualification.
+The permanent `macos-arm64-release` job uses GitHub's Apple silicon `xcode-27` image, requires arm64 macOS 27.0 plus Xcode 27.0/Swift 6.4, records the exact hosted OS/Xcode builds, and runs the complete validator with those recorded builds as explicit expectations. GitHub's hosted image may lag Apple's current Release Candidate.
 
-Hosted qualification and the independent exact-SHA run on the user's own supported Mac are separate release gates. Hosted success does not replace the user-machine gate.
+Hosted compatibility qualification and the independent exact-SHA run on the maintainer's macOS 27 RC (`26A428`) / Xcode 27 RC (`27A266a`) Mac are separate release gates. Hosted success does not replace the exact RC gate.
 
 ## What qualification does not claim
 
@@ -52,6 +52,6 @@ Earlier engineering evidence is preserved under [Historical audits](audits/). It
 
 ## Release package
 
-After the exact candidate passes hosted and independent macOS 27 qualification plus repository/presentation gates, the tagged release workflow independently verifies package identity, produces an `arm64` read-only DMG, verifies the ad-hoc Hardened Runtime signature, freezes/verifies SHA-256, and requests GitHub artifact attestations. See [RELEASE.md](RELEASE.md).
+After the exact candidate passes hosted compatibility and independent exact-RC qualification plus repository/presentation gates, the `arm64` read-only DMG is built and verified on the exact RC environment before publication. The release-verification workflow then independently checks the published checksum, remounted bundle identity/architecture/ad-hoc Hardened Runtime signature, exact changelog notes, and requests GitHub artifact attestations. See [RELEASE.md](RELEASE.md).
 
 Ad-hoc signing is not Developer ID signing or notarization.
