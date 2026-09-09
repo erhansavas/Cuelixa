@@ -48,11 +48,16 @@ jobs:
             -scheme Cuelixa \
             -configuration Release \
             -destination 'generic/platform=macOS' \
+            -derivedDataPath "$RUNNER_TEMP/CuelixaCodeQLDerivedData" \
+            CODE_SIGNING_REQUIRED=NO \
             CODE_SIGNING_ALLOWED=NO \
+            COMPILATION_CACHE_ENABLE_CACHING=NO \
+            SWIFT_ENABLE_COMPILE_CACHE=NO \
+            SWIFT_USE_INTEGRATED_DRIVER=NO \
             ARCHS=arm64 \
             ONLY_ACTIVE_ARCH=YES \
             MACOSX_DEPLOYMENT_TARGET=27.0 \
-            clean build
+            build
 
       - name: Analyze
         uses: github/codeql-action/analyze@5595ccaf912efad79be6eef63a5619ff05969be3 # v4.37.6
