@@ -23,8 +23,8 @@ A tag must not be created until all of these are true for the exact candidate tr
 
 1. The complete source/documentation/repository review is finished and the candidate diff is intentional.
 2. `SOURCE-SHA256SUMS.txt` exactly covers the tracked release tree and `Scripts/verify-source-manifest.sh` passes.
-3. GitHub hosted CI passes with the documented Xcode 27 build-only limitation.
-4. The full `VALIDATE-MAC.sh` run passes on an Apple silicon Mac running the supported macOS 27 runtime and documented Xcode 27 toolchain.
+3. GitHub hosted CI proves an arm64 macOS 27 host, the documented Xcode 27 toolchain, and passes the complete validator for the immutable candidate.
+4. The full `VALIDATE-MAC.sh` run independently passes on the user's Apple silicon Mac running the supported macOS 27 runtime and documented Xcode 27 toolchain for that exact SHA.
 5. Any included CodeQL workflow has demonstrated a successful Swift analysis; otherwise CodeQL is omitted rather than kept as a broken ceremonial check.
 6. Branch protection requirements are satisfied and the PR is merged without bypassing the `main` ruleset.
 7. The merged `main` tree is verified to correspond to the qualified candidate before tagging.
@@ -38,7 +38,7 @@ The permanent `.github/workflows/release-dmg.yml` performs the package-side evid
 
 1. Derive marketing version/build from Xcode and require the tag to equal `v$VERSION`.
 2. Verify the complete source manifest, `arm64` runner/toolchain assumptions, and macOS 27 deployment target.
-3. Run the repository validator in build-only mode on the hosted Xcode 27 runner; this is compile/build/Analyze evidence, not macOS 27 runtime qualification.
+3. Compile tests, build Debug/Release, and run Analyze through the repository validator as an additional package-side check; this does not replace the already-required exact-candidate runtime qualifications.
 4. Build the Release application with project Hardened Runtime settings preserved.
 5. Apply an ad-hoc signature and verify the bundle, metadata, architecture, minimum system, signature, and absence of `get-task-allow`.
 6. Create a read-only DMG containing `Cuelixa.app` and an Applications symlink; verify, mount, and re-check the packaged app.
