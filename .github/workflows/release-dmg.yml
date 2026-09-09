@@ -109,7 +109,7 @@ jobs:
           if [ "$packaging_host_major" -ge 27 ]; then
             diskutil image attach --readOnly --nobrowse --mountPoint "$mount_point" "dist/$DMG"
           else
-            # The hosted Xcode 27 image currently uses a macOS 26 build host.
+            # Compatibility path for a pre-macOS-27 packaging host.
             hdiutil attach -readonly -nobrowse -mountpoint "$mount_point" "dist/$DMG"
           fi
           trap 'diskutil eject "$mount_point" >/dev/null 2>&1 || true' EXIT
@@ -151,7 +151,16 @@ jobs:
           if-no-files-found: error
           retention-days: 30
 
-      - name: Publish matching GitHub Release
+      - name: Extract matching release notes
+        if: github.ref_type == 'tag'
+        shell: bash
+        run: |
+          set -euo pipefail
+          notes="$RUNNER_TEMP/release-notes.md"
+          ./Scripts/extract-release-notes.sh "$VERSION" "$BUILD" "$notes"
+          echo "RELEASE_NOTES=$notes" >> "$GITHUB_ENV"
+
+      - name: Publish matching GitHub Pre-release
         if: github.ref_type == 'tag'
         shell: bash
         env:
@@ -162,5 +171,6 @@ jobs:
           gh release create "${GITHUB_REF_NAME}" \
             "dist/$DMG" "dist/$DMG.sha256" \
             --title "Cuelixa $VERSION" \
-            --notes-file CHANGELOG.md \
+            --notes-file "$RELEASE_NOTES" \
+            --prerelease \
             --verify-tag
