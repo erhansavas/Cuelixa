@@ -6,8 +6,10 @@ final class CuelixaLaunchTests: XCTestCase {
   func testEmptyLibraryLaunchesAndAcceptsKeyboardCommand() throws {
     let root = try isolatedRoot()
     let app = launch(root: root)
-    XCTAssertTrue(app.staticTexts["Your Library is Empty"].waitForExistence(timeout: 10))
+    let emptyState = app.staticTexts["Your Library is Empty"]
+    XCTAssertTrue(emptyState.waitForExistence(timeout: 10))
     assertIsolatedDatabase(root: root)
+    assertSidebarRoundTrip(app, content: emptyState)
 
     app.typeKey("w", modifierFlags: .command)
     XCTAssertTrue(app.windows.firstMatch.waitForNonExistence(timeout: 5))
@@ -51,6 +53,37 @@ final class CuelixaLaunchTests: XCTestCase {
     lesson.rightClick()
     XCTAssertTrue(app.menuItems["Mark as Unfinished"].waitForExistence(timeout: 5))
     app.typeKey(.escape, modifierFlags: [])
+  }
+
+  func testSearchResignsOnDetailBackgroundWithoutClearingQuery() throws {
+    let root = try isolatedRoot()
+    try writeSilentLesson("Focus Lesson", seconds: 60, root: root)
+    let app = launch(root: root)
+    assertIsolatedDatabase(root: root)
+    let lesson = app.staticTexts["Focus Lesson"]
+    XCTAssertTrue(lesson.waitForExistence(timeout: 15))
+
+    let search = app.searchFields.firstMatch
+    XCTAssertTrue(search.isHittable)
+    search.click()
+    search.typeText("no matching lesson")
+    XCTAssertEqual(search.value as? String, "no matching lesson")
+    XCTAssertTrue(lesson.waitForNonExistence(timeout: 5))
+
+    let detailBackground = app.windows.firstMatch.coordinate(
+      withNormalizedOffset: CGVector(dx: 0.72, dy: 0.78))
+    detailBackground.click()
+    app.typeText("z")
+    XCTAssertEqual(
+      search.value as? String, "no matching lesson",
+      "Typing after a detail-background click must not continue editing search")
+
+    search.click()
+    search.typeText("z")
+    XCTAssertEqual(search.value as? String, "no matching lessonz")
+    search.typeKey("a", modifierFlags: .command)
+    search.typeKey(.delete, modifierFlags: [])
+    XCTAssertTrue(lesson.waitForExistence(timeout: 5))
   }
 
   func testSidecarPlaybackAndKeyboardStopReturnToLibrary() throws {
@@ -114,6 +147,7 @@ final class CuelixaLaunchTests: XCTestCase {
       XCTAssertEqual(compactFrame.height, compactSize.height, accuracy: 5)
       XCTAssertTrue(play.isHittable)
       XCTAssertTrue(app.searchFields.firstMatch.isHittable)
+      assertSidebarRoundTrip(app, content: play)
       try auditAccessibility(app)
       let compactScreenshot = XCTAttachment(screenshot: window.screenshot())
       compactScreenshot.name = "Library-\(appearance == .light ? "Light" : "Dark")-Compact"
@@ -132,6 +166,7 @@ final class CuelixaLaunchTests: XCTestCase {
       XCTAssertGreaterThan(expandedFrame.height, compactFrame.height)
       XCTAssertTrue(play.isHittable)
       XCTAssertTrue(app.searchFields.firstMatch.isHittable)
+      assertSidebarRoundTrip(app, content: play)
       try auditAccessibility(app)
       let expandedScreenshot = XCTAttachment(screenshot: window.screenshot())
       expandedScreenshot.name = "Library-\(appearance == .light ? "Light" : "Dark")-Expanded"
@@ -166,6 +201,25 @@ final class CuelixaLaunchTests: XCTestCase {
     XCTAssertTrue(
       FileManager.default.fileExists(
         atPath: root.appendingPathComponent("Application Support/Cuelixa/library.sqlite3").path))
+  }
+
+  private func assertSidebarRoundTrip(_ app: XCUIApplication, content: XCUIElement) {
+    let hideSidebar = app.buttons["Hide Sidebar"]
+    XCTAssertTrue(hideSidebar.waitForExistence(timeout: 5))
+    XCTAssertTrue(hideSidebar.isHittable)
+    hideSidebar.click()
+
+    let showSidebar = app.buttons["Show Sidebar"]
+    XCTAssertTrue(showSidebar.waitForExistence(timeout: 5))
+    XCTAssertTrue(showSidebar.isHittable)
+    XCTAssertTrue(content.isHittable)
+    XCTAssertTrue(app.searchFields.firstMatch.isHittable)
+    showSidebar.click()
+
+    XCTAssertTrue(hideSidebar.waitForExistence(timeout: 5))
+    XCTAssertTrue(hideSidebar.isHittable)
+    XCTAssertTrue(content.isHittable)
+    XCTAssertTrue(app.searchFields.firstMatch.isHittable)
   }
 
   private func auditAccessibility(_ app: XCUIApplication) throws {
