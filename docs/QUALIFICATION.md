@@ -1,31 +1,58 @@
-# Testing status — Cuelixa 0.7 (build 53)
+# Qualification — Cuelixa 0.7.1 (build 54)
 
-Cuelixa 0.7 requires macOS 27 or later and Apple silicon. Current validation uses an Apple silicon Mac running macOS 27.0 (26A5425a), Xcode 27.0 (27A5252f), and Swift 6.4.
+Cuelixa 0.7.1 requires an Apple silicon Mac running macOS 27.0 or later. The release qualification target is macOS 27 beta 8 (`26A5425a`), Xcode 27 beta 6 (`27A5252f`), and Swift 6.4.
 
-## Automated checks
+This document defines what must be proven. It intentionally does not embed a mutable “latest successful run” claim that would require changing the source tree after the exact candidate SHA has been qualified. The PR/Actions/release evidence records the actual run result for that immutable candidate.
 
-The automated suite contains 37 Swift Testing unit/integration tests, two XCTest performance tests, and four native UI scenarios. All 43 passed with the macOS 27 minimum target on 2026-09-08. The validator also passed Debug and Release builds, Analyze, SDK/API smokes, local AVFoundation playback, strict concurrency, and warnings-as-errors. Source-manifest verification passed separately.
+## Complete validator
 
-The native UI scenarios verify isolated libraries, search, completion persistence, keyboard playback, close/reopen, scoped accessibility checks, and resizing in light and dark appearances. Exact run evidence and remaining accessibility limitations are recorded in [AUDIT-REPORT.md](../AUDIT-REPORT.md).
+`VALIDATE-MAC.sh` is the authoritative local qualification entry point. In normal mode on macOS 27 it covers:
 
-The scanner fixture verifies 1,000 unchanged files with zero hashes and one database transaction. Performance tests record CPU, memory, storage and wall-clock metrics. The subtitle timeline fixture covers 10,000 cues.
+- source-manifest verification and tracked-source/project membership;
+- Swift parsing/formatting and project/resource integrity;
+- strict concurrency and warnings-as-errors through project builds;
+- deterministic utility, database, import/scanner, subtitle, cancellation, source-identity, and local AVFoundation smoke checks;
+- the Swift Testing unit/integration suite;
+- XCTest performance coverage;
+- native UI scenarios using an isolated test library;
+- clean Debug and Release builds;
+- Xcode Analyze;
+- deployment target, `arm64` architecture, bundle identifier, version/build, and Release-bundle checks;
+- the same release-note extraction script used by the permanent release workflow.
 
-## Qualification boundary
+The final 0.7.1 candidate must pass the **complete** validator on an actual supported macOS 27 runtime. The complete output is release evidence and must correspond to the exact candidate SHA.
 
-Successful automated checks establish only the behaviors and environment exercised. They do not guarantee the absence of defects or establish complete VoiceOver, display/Spaces/fullscreen, accessibility-preference, or long-duration energy/leak qualification.
+## Regression focus
 
-The minimum deployment target is macOS 27.0 for the app and both test targets. Earlier macOS 26 UI failures remain historical audit evidence; macOS 26 is outside the supported range for version 0.7.
+The 0.7.1 suite includes regression coverage for the source-identity work added after 0.7, including regular in-library audio, safe internal symlinks, rejection of external/dangling/special scanner targets, deterministic canonical-target deduplication, import-through-external-symlink copying, and changed-source rehash/reconciliation behavior.
 
-Historical checks for the 0.6.66 baseline and earlier audit commits used macOS 26, Xcode 26.6 (17F113), and Swift 6.3.3. They do not establish current release qualification.
+The scanner performance fixture retains the legacy per-record database path as a test comparison so the one-transaction reconciliation path can be measured against its predecessor. That test capability is not evidence that the legacy path is used by the application scanner.
 
-## Hosted CI
+## Hosted CI boundary
 
-The `xcode-27` runner provides the same Xcode 27 beta 6 toolchain but currently runs macOS 26. Hosted checks compile all macOS 27 test targets and smoke executables, clean-build Debug and Release, run Analyze, and verify source and bundle integrity. `CUELIXA_BUILD_ONLY=1` reports runtime tests as unexecuted; the full local macOS 27 run supplies that separate evidence.
+GitHub's `xcode-27` Apple silicon image supplies the Xcode 27 beta 6 toolchain but currently runs a macOS 26 host. The permanent `macos-arm64-release` job therefore runs the validator with `CUELIXA_BUILD_ONLY=1`.
+
+That mode compiles the macOS 27 application/test/smoke targets, builds Debug and Release, runs Analyze, and verifies source/bundle metadata, but it deliberately **does not execute** binaries that require the macOS 27 runtime. Hosted success is build/compile/Analyze evidence only.
+
+## What qualification does not claim
+
+Passing the automated gates establishes only the exercised behaviors and environment. It does not establish exhaustive coverage of:
+
+- VoiceOver and Full Keyboard Access combinations;
+- Reduce Motion, Reduce Transparency, or Increase Contrast combinations;
+- every multiple-display, Spaces, or fullscreen arrangement;
+- very long playback/idle sessions;
+- exhaustive energy/leak characterization;
+- behavior in the presence of a malicious process already running as the same macOS user.
+
+These are truthful qualification boundaries, not known defects unless a failing behavior is actually observed.
+
+## Historical evidence
+
+Earlier engineering qualification and macOS 26/0.6.66 evidence is preserved under [Historical audits](audits/). It is not current architecture or proof of the 0.7.1 candidate.
 
 ## Release package
 
-The release workflow derives version/build identity from the Xcode project, verifies source integrity, builds an `arm64` Release application, applies an ad-hoc signature with Hardened Runtime, creates a read-only DMG, mounts and rechecks it, publishes its SHA-256 checksum, and creates GitHub build-provenance attestations.
-
-Local execution of the workflow's packaging steps passed image, metadata, signature, and checksum checks. The signed app inside the mounted read-only DMG launched and exited cleanly on macOS 27.
+After the exact candidate passes local macOS 27 qualification and repository gates, the tagged release workflow independently verifies package identity, produces an `arm64` read-only DMG, verifies the ad-hoc Hardened Runtime signature, freezes/verifies SHA-256, and requests GitHub artifact attestations. See [RELEASE.md](RELEASE.md).
 
 Ad-hoc signing is not Developer ID signing or notarization.
