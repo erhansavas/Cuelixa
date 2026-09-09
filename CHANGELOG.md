@@ -36,3 +36,16 @@ The full runtime and UI suite runs on macOS 27. Hosted CI compiles and analyzes 
 - Derive release identity from Xcode metadata and attest release artifacts through GitHub Actions.
 
 Distribution is free and ad-hoc signed. The release is not Apple Developer ID signed or notarized.
+
+## Cuelixa 0.6.65 (build 51)
+
+- Native SwiftUI/AppKit macOS application for Apple silicon.
+- Local audio library with search, resume, completion state, and filesystem observation.
+- AVFoundation playback with confirmed-start handling, seeking, MediaPlayer integration, and global shortcuts.
+- On-device subtitle preparation using Apple Speech APIs, local transcript caching, and synchronized subtitle display.
+- Movable nonactivating subtitle/player panel designed to remain useful across normal app and Space/fullscreen workflows.
+- SQLite-backed local state with WAL mode.
+- Privacy manifest, local-first data model, hardened runtime build setting, strict Swift concurrency, and warnings-as-errors.
+- Final cancellation/presentation-state fix prevents an empty subtitle-preparation popover from remaining after dismissal.
+
+Source can be validated with `./VALIDATE-MAC.sh` on the exact qualification toolchain. The GitHub release is a free ad-hoc-signed DMG; because no paid Developer ID is used, macOS requires one manual **Open Anyway** approval after download.
