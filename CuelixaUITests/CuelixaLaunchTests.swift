@@ -148,8 +148,8 @@ final class CuelixaLaunchTests: XCTestCase {
   }
 
   private func auditAccessibility(_ app: XCUIApplication) throws {
-    // Contrast and native menu-action audit limitations are recorded in AUDIT-REPORT.md.
-    // Screenshots supplement these checks; this is not a complete VoiceOver qualification.
+    // Contrast and native menu-action audit limitations are recorded in the historical
+    // engineering audit under docs/audits; this is not a complete VoiceOver qualification.
     try app.performAccessibilityAudit(for: [
       .elementDetection, .hitRegion, .sufficientElementDescription, .parentChild,
     ]) { issue in
