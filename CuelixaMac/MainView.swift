@@ -11,6 +11,7 @@ struct MainView: View {
   @State private var selectedTrackID: Track.ID?
   @State private var showingBatchStatus = false
   @State private var showingResetSubtitlesConfirmation = false
+  @FocusState private var searchHasFocus: Bool
 
   var body: some View {
     NavigationSplitView(columnVisibility: $columnVisibility) {
@@ -21,6 +22,13 @@ struct MainView: View {
       LibraryContent(selection: $selectedTrackID, player: model.player)
         .environmentObject(model)
         .searchable(text: $searchText, placement: .toolbar, prompt: Text("Search Lessons"))
+        .searchFocused($searchHasFocus)
+        .contentShape(Rectangle())
+        .simultaneousGesture(
+          TapGesture().onEnded {
+            if searchHasFocus { searchHasFocus = false }
+          }
+        )
     }
     .tint(CuelixaDesign.identityAccent)
     .task(id: searchText) {
@@ -32,7 +40,7 @@ struct MainView: View {
       }
     }
     .toolbar {
-      ToolbarItem(placement: .navigation) {
+      ToolbarItem(placement: .secondaryAction) {
         Menu {
           Button {
             model.openLibraryFolder()
