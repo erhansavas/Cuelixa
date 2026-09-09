@@ -8,9 +8,9 @@
 - Add a maintained architecture document, consolidate release documentation, and separate historical audit evidence from current source-of-truth docs.
 - Clarify source organization by giving the seek-slider source a truthful filename and keeping filesystem identity helpers with the local-file subsystem.
 - Make release-note extraction deterministic and keep 0.7.1 pre-release status encoded in the release workflow while macOS 27 remains beta.
-- Add pinned Swift CodeQL analysis, subject to successful validation in the final pull request.
+- Evaluate Swift CodeQL with GitHub's documented manual-build compatibility settings; omit the workflow after its traced build remained unreliable despite ordinary native validation being independent of CodeQL.
 
-Permanent GitHub CI for 0.7.1 is configured to require a macOS 27 `xcode-27` host and run the complete validator. Hosted validation, CodeQL, repository presentation, and the independent exact-SHA macOS 27 run remain release gates until they have actually passed for the immutable final candidate.
+Permanent GitHub CI for 0.7.1 is configured to require a macOS 27 `xcode-27` host and run the complete validator. Hosted validation, repository presentation, and the independent exact-SHA macOS 27 run remain release gates until they have actually passed for the immutable final candidate.
 
 ## Cuelixa 0.7 (build 53)
 
