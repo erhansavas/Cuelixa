@@ -10,7 +10,7 @@ body:
     id: version
     attributes:
       label: Cuelixa version
-      placeholder: 0.7 (build 53)
+      placeholder: 0.7.1 (build 54)
     validations:
       required: true
   - type: input
