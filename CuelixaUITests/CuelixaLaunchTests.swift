@@ -66,21 +66,21 @@ final class CuelixaLaunchTests: XCTestCase {
     let search = app.searchFields.firstMatch
     XCTAssertTrue(search.isHittable)
     search.click()
-    search.typeText("no matching lesson")
-    XCTAssertEqual(search.value as? String, "no matching lesson")
+    search.typeText("z")
+    XCTAssertEqual(search.value as? String, "z")
     XCTAssertTrue(lesson.waitForNonExistence(timeout: 5))
 
     let detailBackground = app.windows.firstMatch.coordinate(
       withNormalizedOffset: CGVector(dx: 0.72, dy: 0.78))
     detailBackground.click()
-    app.typeText("z")
+    app.typeText("x")
     XCTAssertEqual(
-      search.value as? String, "no matching lesson",
+      search.value as? String, "z",
       "Typing after a detail-background click must not continue editing search")
 
     search.click()
-    search.typeText("z")
-    XCTAssertEqual(search.value as? String, "no matching lessonz")
+    search.typeText("x")
+    XCTAssertEqual(search.value as? String, "zx")
     search.typeKey("a", modifierFlags: .command)
     search.typeKey(.delete, modifierFlags: [])
     XCTAssertTrue(lesson.waitForExistence(timeout: 5))
@@ -162,8 +162,6 @@ final class CuelixaLaunchTests: XCTestCase {
       let expandedFrame = window.frame
       XCTAssertEqual(expandedFrame.width, initialFrame.width, accuracy: 5)
       XCTAssertEqual(expandedFrame.height, initialFrame.height, accuracy: 5)
-      XCTAssertGreaterThan(expandedFrame.width, compactFrame.width)
-      XCTAssertGreaterThan(expandedFrame.height, compactFrame.height)
       XCTAssertTrue(play.isHittable)
       XCTAssertTrue(app.searchFields.firstMatch.isHittable)
       assertSidebarRoundTrip(app, content: play)

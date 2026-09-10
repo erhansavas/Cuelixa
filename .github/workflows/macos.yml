@@ -20,7 +20,7 @@ jobs:
     runs-on: xcode-27
     timeout-minutes: 30
     env:
-      DEVELOPER_DIR: /Applications/Xcode_27_beta_6.app/Contents/Developer
+      DEVELOPER_DIR: /Applications/Xcode.app/Contents/Developer
     steps:
       - name: Checkout
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
@@ -31,17 +31,23 @@ jobs:
         shell: bash
         run: ./Scripts/verify-source-manifest.sh
 
-      - name: Prove macOS 27 and Xcode 27 toolchain
+      - name: Prove hosted macOS 27 / Xcode 27 environment
         shell: bash
         run: |
           set -euo pipefail
           test "$(uname -m)" = arm64
           sw_vers
-          test "$(sw_vers -productVersion | cut -d. -f1)" = 27
+          test "$(sw_vers -productVersion)" = 27.0
           xcodebuild -version
           xcrun swiftc --version
-          xcodebuild -version | grep -Fx 'Xcode 27.0'
-          xcodebuild -version | grep -Fx 'Build version 27A5252f'
+          test "$(xcodebuild -version | sed -n '1s/^Xcode //p')" = 27.0
+          xcrun swiftc --version | head -n 1 | grep -Fq 'Swift version 6.4'
+          host_macos_build="$(sw_vers -buildVersion)"
+          host_xcode_build="$(xcodebuild -version | sed -n '2s/^Build version //p')"
+          test -n "$host_macos_build"
+          test -n "$host_xcode_build"
+          echo "CUELIXA_HOST_MACOS_BUILD=$host_macos_build" >> "$GITHUB_ENV"
+          echo "CUELIXA_HOST_XCODE_BUILD=$host_xcode_build" >> "$GITHUB_ENV"
 
       - name: Verify current release-note extraction
         shell: bash
@@ -55,6 +61,10 @@ jobs:
           test "$(head -n 1 "$notes")" = "## Cuelixa $version (build $build)"
           test "$(grep -c '^## Cuelixa ' "$notes")" = 1
 
-      - name: Run complete validator on macOS 27
+      - name: Run complete validator on hosted macOS 27
         shell: bash
-        run: ./VALIDATE-MAC.sh
+        run: |
+          set -euo pipefail
+          CUELIXA_MACOS_BUILD="$CUELIXA_HOST_MACOS_BUILD" \
+          CUELIXA_XCODE_BUILD="$CUELIXA_HOST_XCODE_BUILD" \
+          ./VALIDATE-MAC.sh

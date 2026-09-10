@@ -3,9 +3,11 @@
 set -euo pipefail
 cd "$(dirname "$0")"
 
+export DEVELOPER_DIR="${DEVELOPER_DIR:-/Applications/Xcode.app/Contents/Developer}"
 expected_macos="${CUELIXA_MACOS_VERSION:-27.0}"
+expected_macos_build="${CUELIXA_MACOS_BUILD:-26A428}"
 expected_xcode="${CUELIXA_XCODE_VERSION:-27.0}"
-expected_xcode_build="${CUELIXA_XCODE_BUILD:-27A5252f}"
+expected_xcode_build="${CUELIXA_XCODE_BUILD:-27A266a}"
 expected_swift="${CUELIXA_SWIFT_VERSION:-6.4}"
 expected_build="$(sed -nE 's/.*CURRENT_PROJECT_VERSION = ([^;]+);.*/\1/p' CuelixaMac.xcodeproj/project.pbxproj | head -n 1)"
 expected_version="$(sed -nE 's/.*MARKETING_VERSION = ([^;]+);.*/\1/p' CuelixaMac.xcodeproj/project.pbxproj | head -n 1)"
@@ -32,11 +34,13 @@ xcodebuild -version
 xcrun swiftc --version
 [[ "$(uname -m)" == "arm64" ]] || fail 'qualification must run on arm64'
 actual_macos="$(sw_vers -productVersion)"
+actual_macos_build="$(sw_vers -buildVersion)"
 if [[ "$build_only" == "1" ]]; then
-  print -- "Build-only validation on macOS $actual_macos: all app/test targets require macOS 27.0."
-  print -- "Runtime tests are not executed in this mode; full macOS $expected_macos validation is required before release."
+  print -- "Build-only validation on macOS $actual_macos ($actual_macos_build): all app/test targets require macOS 27.0."
+  print -- "Runtime tests are not executed in this mode; exact macOS $expected_macos ($expected_macos_build) validation is required before release."
 else
   [[ "$actual_macos" == "$expected_macos" ]] || fail "expected macOS $expected_macos, found $actual_macos"
+  [[ "$actual_macos_build" == "$expected_macos_build" ]] || fail "expected macOS build $expected_macos_build, found $actual_macos_build"
 fi
 [[ "$(xcodebuild -version | sed -n '1s/^Xcode //p')" == "$expected_xcode" ]] || fail "expected Xcode $expected_xcode"
 [[ "$(xcodebuild -version | sed -n '2s/^Build version //p')" == "$expected_xcode_build" ]] || fail "expected Xcode build $expected_xcode_build"

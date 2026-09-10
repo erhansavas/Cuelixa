@@ -1,6 +1,6 @@
 # Cuelixa architecture
 
-This document describes the Cuelixa 0.7.1 implementation. It is a source-of-truth overview, not an aspirational design document.
+This document describes the Cuelixa 0.7.2 implementation. It is a source-of-truth overview, not an aspirational design document.
 
 ## System overview
 
