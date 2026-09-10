@@ -29,7 +29,7 @@ The scanner performance fixture retains the legacy per-record database path as a
 
 ## Hosted CI boundary
 
-The permanent `macos-arm64-release` job uses GitHub's Apple silicon `xcode-27` image, requires arm64 macOS 27.0 plus Xcode 27.0/Swift 6.4, records the exact hosted OS/Xcode builds, and runs the complete validator with those recorded builds as explicit expectations. GitHub's hosted image may lag Apple's current Release Candidate.
+The permanent `macos-arm64-release` job uses GitHub's Apple silicon `xcode-27` image, requires arm64 macOS 27.0 plus Xcode 27.0/Swift 6.4, records the exact hosted OS/Xcode builds, and runs the complete validator with those recorded builds as explicit expectations. GitHub's hosted image may lag the qualification toolchain.
 
 Hosted compatibility qualification and the independent exact-SHA run on the maintainer's macOS 27 RC (`26A428`) / Xcode 27 RC (`27A266a`) Mac are separate release gates. Hosted success does not replace the exact RC gate.
 
@@ -52,6 +52,6 @@ Earlier engineering evidence is preserved under [Historical audits](audits/). It
 
 ## Release package
 
-After the exact candidate passes hosted compatibility and independent exact-RC qualification plus repository/presentation gates, the `arm64` read-only DMG is built and verified on the exact RC environment before publication. The release-verification workflow then independently checks the published checksum, remounted bundle identity/architecture/ad-hoc Hardened Runtime signature, exact changelog notes, and requests GitHub artifact attestations. See [RELEASE.md](RELEASE.md).
+After the exact candidate passes hosted compatibility and independent exact-RC qualification plus repository/presentation gates, the `arm64` read-only DMG is built and verified on the exact RC environment before publication. The release-verification workflow then independently requires immutable-release metadata and exactly the expected DMG/checksum assets, verifies the published checksum, remounted bundle identity/architecture/ad-hoc Hardened Runtime signature, and exact changelog notes. GitHub's immutable release provides a release attestation for the published tag, commit, and assets; it is not claimed as build provenance for the locally built DMG. See [RELEASE.md](RELEASE.md).
 
 Ad-hoc signing is not Developer ID signing or notarization.
