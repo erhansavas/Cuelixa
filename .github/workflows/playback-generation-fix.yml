@@ -77,6 +77,7 @@ jobs:
           ! grep -Fq 'Task { @MainActor in self?.sample(CMTimeGetSeconds(time)) }' CuelixaMac/PlaybackController.swift
 
           rm .github/workflows/playback-generation-fix.yml
+          git add -u .github/workflows/playback-generation-fix.yml
 
           git ls-files | grep -vxF SOURCE-SHA256SUMS.txt | LC_ALL=C sort | while IFS= read -r path; do
             hash="$(shasum -a 256 "$path" | awk '{print $1}')"
