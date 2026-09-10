@@ -8,6 +8,7 @@ build/
 *.xcscmblueprint
 xcuserdata/
 *.xccheckout
+*.xcodeproj/project.xcworkspace/contents.xcworkspacedata
 
 # SwiftPM local state (if tooling is added later)
 .build/
