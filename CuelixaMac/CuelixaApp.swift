@@ -55,7 +55,6 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     // existing Show Library/reopen workflow.
     window.isReleasedWhenClosed = false
     window.tabbingMode = .disallowed
-    model.updateMainWindowInteraction()
   }
 
   func applicationShouldTerminateAfterLastWindowClosed(_ sender: NSApplication) -> Bool { false }
