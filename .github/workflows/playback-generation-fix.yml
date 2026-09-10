@@ -1,0 +1,113 @@
+# SPDX-License-Identifier: Apache-2.0
+name: Apply playback generation guard
+
+on:
+  push:
+    branches: [fix/playback-generation-guard]
+
+permissions:
+  contents: write
+
+jobs:
+  apply:
+    runs-on: xcode-27
+    timeout-minutes: 10
+    steps:
+      - name: Checkout exact fix branch
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: true
+          fetch-depth: 0
+
+      - name: Apply and verify narrow session-identity guard
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 - <<'PY'
+          from pathlib import Path
+
+          path = Path("CuelixaMac/PlaybackController.swift")
+          text = path.read_text()
+
+          replacements = [
+              (
+                  "    installPeriodicObserver(on: player)\n",
+                  "    installPeriodicObserver(on: player, generation: generation)\n",
+              ),
+              (
+                  '''  private func installPeriodicObserver(on player: AVPlayer) {
+            guard observer == nil else { return }
+            // 10 Hz is sufficient for a spoken-audio transport and subtitle overlay.
+            // Exact user seeks remain event-driven; readiness is established first so a
+            // failed item never creates a recurring time observer.
+            let interval = CMTime(seconds: 0.1, preferredTimescale: 600)
+            observer = player.addPeriodicTimeObserver(forInterval: interval, queue: .main) {
+              [weak self] time in
+              Task { @MainActor in self?.sample(CMTimeGetSeconds(time)) }
+            }
+          }
+          ''',
+                  '''  private func installPeriodicObserver(on player: AVPlayer, generation: UInt64) {
+            guard observer == nil, playbackGeneration == generation, self.player === player else { return }
+            // 10 Hz is sufficient for a spoken-audio transport and subtitle overlay.
+            // Exact user seeks remain event-driven; readiness is established first so a
+            // failed item never creates a recurring time observer. Carry the session
+            // generation and player identity across the MainActor hop so a callback queued
+            // before teardown cannot mutate a replacement playback session.
+            let interval = CMTime(seconds: 0.1, preferredTimescale: 600)
+            observer = player.addPeriodicTimeObserver(forInterval: interval, queue: .main) {
+              [weak self, weak player] time in
+              Task { @MainActor in
+                guard let self, let player else { return }
+                self.sample(CMTimeGetSeconds(time), generation: generation, player: player)
+              }
+            }
+          }
+          ''',
+              ),
+              (
+                  "  private func sample(_ value: Double) {\n    guard isRunning, value.isFinite else { return }\n",
+                  "  private func sample(_ value: Double, generation: UInt64, player observedPlayer: AVPlayer) {\n    guard playbackGeneration == generation, player === observedPlayer, isRunning, value.isFinite\n    else { return }\n",
+              ),
+              (
+                  "    if let actualDuration = player?.currentItem?.duration.seconds,\n",
+                  "    if let actualDuration = observedPlayer.currentItem?.duration.seconds,\n",
+              ),
+          ]
+
+          for old, new in replacements:
+              count = text.count(old)
+              if count != 1:
+                  raise SystemExit(f"expected exactly one source match, found {count}: {old[:100]!r}")
+              text = text.replace(old, new, 1)
+
+          path.write_text(text)
+          PY
+
+          test "$(shasum -a 256 CuelixaMac/PlaybackController.swift | awk '{print $1}')" = "a9035f8f9a1925c7871267a6e4eb7ca86bb06fd192472d1654635230948c1b17"
+          grep -Fq 'installPeriodicObserver(on: player, generation: generation)' CuelixaMac/PlaybackController.swift
+          grep -Fq 'guard playbackGeneration == generation, player === observedPlayer, isRunning, value.isFinite' CuelixaMac/PlaybackController.swift
+          grep -Fq 'observedPlayer.currentItem?.duration.seconds' CuelixaMac/PlaybackController.swift
+          ! grep -Fq 'Task { @MainActor in self?.sample(CMTimeGetSeconds(time)) }' CuelixaMac/PlaybackController.swift
+
+          rm .github/workflows/playback-generation-fix.yml
+
+          git ls-files | grep -vxF SOURCE-SHA256SUMS.txt | LC_ALL=C sort | while IFS= read -r path; do
+            hash="$(shasum -a 256 "$path" | awk '{print $1}')"
+            printf '%s  %s\n' "$hash" "$path"
+          done > SOURCE-SHA256SUMS.txt
+
+          ./Scripts/verify-source-manifest.sh
+          xcrun swiftc -frontend -parse CuelixaMac/PlaybackController.swift
+          xcrun swift-format lint --strict CuelixaMac/PlaybackController.swift
+          git diff --check
+
+          git add -A
+          changed="$(git diff --cached --name-only | LC_ALL=C sort)"
+          expected="$(printf '%s\n' '.github/workflows/playback-generation-fix.yml' 'CuelixaMac/PlaybackController.swift' 'SOURCE-SHA256SUMS.txt' | LC_ALL=C sort)"
+          test "$changed" = "$expected"
+
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git commit -m "Guard periodic playback samples by session"
+          git push origin HEAD:fix/playback-generation-guard
