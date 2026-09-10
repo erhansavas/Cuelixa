@@ -17,7 +17,7 @@ The ruleset allows squash and rebase merges. Release work must not weaken or byp
 
 ## Workflow policy
 
-Permanent workflows need a clear repository purpose, least-privilege `permissions`, and third-party actions pinned to immutable full commit SHAs. Release-only write scopes belong on the release job that needs them; ordinary CI stays read-only.
+Permanent workflows need a clear repository purpose, least-privilege `permissions`, and third-party actions pinned to immutable full commit SHAs. Ordinary CI and post-release verification are read-only. A workflow receives write or OIDC permissions only when a concrete repository operation requires them; verification alone is not a reason to grant them.
 
 Temporary audit or remediation workflows are development infrastructure and must not remain in a release tree.
 
@@ -29,7 +29,7 @@ Swift CodeQL was evaluated on the 0.7.1 release candidate using GitHub's support
 
 Because CodeQL is optional for this project and the native validator is an independent release gate, the workflow was removed instead of leaving a known-red or speculative check. This is a deliberate coverage trade-off; Xcode Analyze, tests, and review are not claimed to provide equivalent CodeQL coverage. Reintroduce CodeQL only when a future toolchain/workflow combination demonstrates reliable Swift analysis.
 
-## GitHub-hosted security settings
+## GitHub-hosted security and release settings
 
 The following controls live outside the repository tree and should be checked in GitHub Settings before a public release:
 
@@ -37,6 +37,8 @@ The following controls live outside the repository tree and should be checked in
 - secret scanning and push protection;
 - Private Vulnerability Reporting;
 - default workflow-token permissions remain read-only unless a workflow explicitly overrides them;
-- immutable protection for published `v*` tags when configured separately from the `main` ruleset.
+- immutable releases are enabled before publication.
 
-Do not treat this file alone as proof that a GitHub-hosted setting is enabled.
+An immutable GitHub release locks its tag and attached release assets and provides a GitHub release attestation binding the release tag, commit SHA, and assets. That platform-generated release attestation is different from SLSA build provenance. Cuelixa's locally built DMG is therefore not given a GitHub Actions build-provenance attestation by the post-release verifier.
+
+Do not treat this file alone as proof that a GitHub-hosted setting is enabled; verify the live repository state during release qualification.
