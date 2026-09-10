@@ -2,11 +2,11 @@
 
 ## Cuelixa 0.7.2 (build 55)
 
-- Made the standard Hide/Show Sidebar transition feel natural by keeping unrelated toolbar actions in place when the sidebar changes.
-- Clicking the library background now leaves Search without clearing the current query, so keyboard input no longer stays in the search field after focus moves away.
-- Added UI regression coverage for both behaviors, including repeated sidebar round trips and compact/expanded light and dark appearance checks.
+- Made Hide/Show Sidebar feel natural: opening or closing the sidebar no longer makes unrelated toolbar buttons jump.
+- Clicking empty library content now releases Search focus without clearing the current query.
+- Added UI regression tests for both fixes.
 
-Cuelixa 0.7.2 is a focused UI-correctness patch over 0.7.1. Library data, transcription, playback, persistence, and release-integrity behavior are otherwise unchanged.
+Cuelixa 0.7.2 is a focused UI-correctness patch over 0.7.1. Library data, transcription, playback, and persistence are otherwise unchanged.
 
 ## Cuelixa 0.7.1 (build 54)
 
