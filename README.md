@@ -16,13 +16,13 @@
 
 ## What Cuelixa does
 
-Cuelixa is a native macOS application for focused listening practice. It keeps the lesson library and listening state local, uses Apple Speech for on-device English transcription, and presents subtitles alongside AVFoundation playback without requiring an account or cloud backend.
+Cuelixa is a native macOS app for focused listening practice. It keeps the lesson library and listening state local, uses Apple Speech for on-device English transcription, and presents synchronized subtitles with AVFoundation playback without requiring an account or Cuelixa-operated cloud backend.
 
-- Browse/search local lessons and track completion or resume position.
-- Use an existing same-basename SRT sidecar or prepare synchronized subtitles on-device.
+- Browse and search local lessons, with resume and completion state.
+- Use an existing same-basename SRT sidecar or prepare subtitles on-device.
 - Queue subtitle preparation while keeping one Speech transcription job active at a time.
 - Control playback from the floating subtitle overlay, keyboard shortcuts, or macOS Now Playing controls.
-- Import supported audio by drag-and-drop while preserving the original source file.
+- Import supported audio by drag-and-drop without changing the original source file.
 
 ## Screenshots
 
@@ -49,14 +49,14 @@ Cuelixa is a native macOS application for focused listening practice. It keeps t
 
 ## Engineering highlights
 
-- Native Swift, SwiftUI and AppKit; no third-party package dependencies.
-- AVFoundation playback state machine with async asset validation, seek/start watchdogs, stale-callback generation checks, and verified first-timebase progression before playback presentation.
-- Apple Speech transcription through an actor-owned executor with explicit cancellation and a verified staging snapshot before durable transcript publication.
-- SQLite persistence with serialized connection ownership, WAL mode, busy timeout, foreign keys, and transactional library reconciliation.
-- Defensive local-file handling: canonical scanner containment, intentional symlink boundaries, regular-file checks, bounded reads, import byte verification, and atomic managed transcript publication.
-- Content-addressed transcript cache that binds verified SRT bytes to the lesson audio SHA-256.
-- Strict Swift concurrency and warnings-as-errors in the application target, plus unit/integration, performance, native UI, smoke, build, Analyze, and source-manifest gates.
-- GitHub Actions use immutable action SHAs and least-privilege workflow permissions for their purpose.
+- Native Swift, SwiftUI and AppKit, with no third-party runtime package dependencies.
+- AVFoundation playback validates lesson files and confirms that playback is actually progressing before switching to the floating player.
+- Apple Speech transcription runs on-device, supports cancellation, and works from a verified snapshot so durable subtitles stay tied to the expected lesson bytes.
+- SQLite persistence uses serialized access, WAL mode, a busy timeout, foreign keys, and transactional library reconciliation.
+- Local-file handling uses canonical path checks, explicit symlink boundaries, regular-file checks, bounded reads, verified imports, and atomic publication for app-managed transcripts.
+- Managed transcript caches are content-addressed and bind verified SRT bytes to the lesson audio SHA-256.
+- Strict Swift concurrency and warnings-as-errors are backed by unit/integration, performance, native UI, smoke, build, Analyze, and source-manifest gates.
+- GitHub Actions use immutable action SHAs and narrowly scoped workflow permissions.
 
 See [Architecture](docs/ARCHITECTURE.md) for subsystem ownership, data flows, concurrency, invariants, and the security boundary.
 
@@ -66,11 +66,11 @@ See [Architecture](docs/ARCHITECTURE.md) for subsystem ownership, data flows, co
 - macOS 27.0 or later
 - Full Xcode 27 to build from source
 
-Cuelixa 0.7.2 qualification targets macOS 27 Release Candidate (`26A428`) with Xcode 27 Release Candidate (`27A266a`) and Swift 6.4. Permanent GitHub CI runs the complete validator on GitHub's available arm64 macOS 27 `xcode-27` image and records the exact hosted OS/Xcode builds. Because hosted images can lag Apple's current RC, release qualification separately requires the exact 0.7.2 candidate to pass on the maintainer's RC environment before merge/tag.
+Cuelixa 0.7.2 qualification targets macOS 27 Release Candidate (`26A428`) with Xcode 27 Release Candidate (`27A266a`) and Swift 6.4. Permanent GitHub CI also runs the complete validator on GitHub's available arm64 macOS 27 `xcode-27` image and records the exact hosted OS/Xcode builds. Because hosted images can lag Apple's current RC, release qualification separately requires the exact candidate to pass on the maintainer's RC environment before it is tagged.
 
 ## Install
 
-Release artifacts are published on [GitHub Releases](https://github.com/erhansavas/Cuelixa/releases). The v0.7.2 release package consists of `Cuelixa-0.7.2-macOS-arm64.dmg` and `Cuelixa-0.7.2-macOS-arm64.dmg.sha256`.
+Release packages are distributed through [GitHub Releases](https://github.com/erhansavas/Cuelixa/releases). When 0.7.2 is published, its release assets are `Cuelixa-0.7.2-macOS-arm64.dmg` and `Cuelixa-0.7.2-macOS-arm64.dmg.sha256`.
 
 1. Open the DMG.
 2. Drag **Cuelixa** to **Applications**.
@@ -99,11 +99,11 @@ Same-basename `.srt` sidecars remain user-owned and usable in place. Cuelixa doe
 Open `CuelixaMac.xcodeproj` in full Xcode, select **Cuelixa → My Mac**, and build. The complete qualification command is:
 
 ```sh
-DEVELOPER_DIR=/Applications/Xcode-beta.app/Contents/Developer \
+DEVELOPER_DIR=/Applications/Xcode.app/Contents/Developer \
 ./VALIDATE-MAC.sh
 ```
 
-The validator checks source integrity/formatting, application and test compilation, Debug and Release builds, static analysis, deterministic smoke coverage, runtime/integration/performance tests, native UI scenarios, playback behavior, architecture guards, and final bundle metadata. Permanent pull-request CI runs this complete validator only after proving the hosted machine is an arm64 macOS 27 host with the required Xcode build.
+The validator checks source integrity and formatting, application/test compilation, Debug and Release builds, static analysis, deterministic smoke coverage, runtime/integration/performance tests, native UI scenarios, playback behavior, architecture guards, and final bundle metadata. Permanent pull-request CI runs the same validator after confirming an arm64 macOS 27 host with Xcode 27 and Swift 6.4.
 
 See [Build](docs/BUILD.md) and [Qualification](docs/QUALIFICATION.md).
 
@@ -117,7 +117,7 @@ See [Privacy](docs/PRIVACY.md), [Security](SECURITY.md), [Architecture](docs/ARC
 
 ## Release integrity
 
-For 0.7.2, the release DMG is built from the exact qualified tree on macOS 27 Release Candidate (`26A428`) with Xcode 27 Release Candidate (`27A266a`), then ad-hoc signed with Hardened Runtime, remounted, and frozen with SHA-256 before publication. GitHub's release-verification workflow independently checks the immutable tag, source manifest, exact changelog notes, checksum, packaged metadata/architecture/signature, and requests artifact attestations after publication. Hosted compatibility CI and independent exact-SHA RC qualification must pass before merge/tag.
+For 0.7.2, the release DMG is built from the exact qualified tree on macOS 27 Release Candidate (`26A428`) with Xcode 27 Release Candidate (`27A266a`). The package is ad-hoc signed with Hardened Runtime, remounted for verification, and frozen with SHA-256 before publication. After publication, GitHub independently checks the immutable tag, source manifest, release notes, checksum, packaged metadata, architecture, and signature, then requests artifact attestations.
 
 `SOURCE-SHA256SUMS.txt` detects accidental release-tree drift; because it is stored in the same repository, it is not an independent trust root.
 
