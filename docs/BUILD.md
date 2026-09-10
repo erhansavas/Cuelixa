@@ -31,7 +31,7 @@ Native UI tests use isolated temporary libraries. The `DEBUG` compilation condit
 
 ## Hosted GitHub validation
 
-The permanent `macos-arm64-release` job uses GitHub's Apple silicon `xcode-27` image, requires an arm64 macOS 27.0 host and Xcode 27.0 with Swift 6.4, records the exact hosted macOS/Xcode builds, and runs the complete validator against that hosted environment. GitHub's image can lag Apple's current Release Candidate, so hosted CI is an independent compatibility gate rather than the source of the exact RC build identity.
+The permanent `macos-arm64-release` job uses GitHub's Apple silicon `xcode-27` image, requires an arm64 macOS 27.0 host and Xcode 27.0 with Swift 6.4, records the exact hosted macOS/Xcode builds, and runs the complete validator against that hosted environment. The hosted image can differ from or lag the exact qualification toolchain, so hosted CI is an independent compatibility gate rather than the source of the RC build identity.
 
 Release qualification additionally requires the immutable candidate to pass the complete validator on the maintainer's exact macOS 27 RC (`26A428`) / Xcode 27 RC (`27A266a`) environment. Both gates must correspond to the same candidate tree before release.
 

@@ -2,12 +2,11 @@
 
 ## Cuelixa 0.7.2 (build 55)
 
-- Keep `Library Actions` out of the native navigation/sidebar toolbar cluster so sidebar hide/show no longer causes unrelated toolbar relocation.
-- Make toolbar search resign focus when ordinary detail-background content is clicked while preserving the query and normal list, toolbar, menu, and keyboard interactions.
-- Add native UI regression coverage for search-focus dismissal and repeated standard sidebar hide/show cycles across compact/expanded and light/dark scenarios.
-- Qualify and package 0.7.2 on macOS 27 / Xcode 27 Release Candidate while keeping GitHub's available `xcode-27` image as an independently recorded compatibility gate and post-publication verifier.
+- Made Hide/Show Sidebar feel natural: opening or closing the sidebar no longer makes unrelated toolbar buttons jump.
+- Clicking empty library content now releases Search focus without clearing the current query.
+- Added UI regression tests for both fixes.
 
-Cuelixa 0.7.2 is a focused UI-correctness patch over 0.7.1; the local-first data, filesystem, persistence, transcription, playback, signing, and release-integrity architecture is otherwise unchanged.
+Cuelixa 0.7.2 is a focused UI-correctness patch over 0.7.1. Library data, transcription, playback, and persistence are otherwise unchanged.
 
 ## Cuelixa 0.7.1 (build 54)
 

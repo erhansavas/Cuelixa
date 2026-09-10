@@ -318,7 +318,6 @@ final class DialogSheetController {
     } else {
       window.makeKey()
     }
-    model?.updateMainWindowInteraction()
     NSApp.activate()
   }
 
@@ -331,7 +330,6 @@ final class DialogSheetController {
     if destroy {
       window.contentViewController = nil
     }
-    model?.updateMainWindowInteraction()
   }
 }
 
@@ -370,7 +368,6 @@ final class QuitSheetController {
     } else {
       window.makeKey()
     }
-    model?.updateMainWindowInteraction()
     NSApp.activate()
   }
 
@@ -379,7 +376,6 @@ final class QuitSheetController {
       parent.endSheet(window)
     }
     window.orderOut(nil)
-    model?.updateMainWindowInteraction()
   }
 
   func focus() {

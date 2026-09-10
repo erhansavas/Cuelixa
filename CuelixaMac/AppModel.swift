@@ -75,7 +75,6 @@ final class AppModel: ObservableObject {
     player.onEnded = { [weak self] hash in
       guard let self, let track = self.db.track(hash: hash) else { return }
       self.completionTrack = track
-      self.updateMainWindowInteraction()
       if self.dialogSheets == nil { self.dialogSheets = DialogSheetController(model: self) }
       self.resolveMainWindow()?.makeKeyAndOrderFront(nil)
       if !self.quitWarning { self.dialogSheets?.showCompletion(track: track) }
@@ -790,7 +789,6 @@ final class AppModel: ObservableObject {
       return
     }
     resolveMainWindow()?.makeKeyAndOrderFront(nil)
-    updateMainWindowInteraction()
   }
 
   private func presentStartedPlayback() {
@@ -802,7 +800,6 @@ final class AppModel: ObservableObject {
     // overlay becomes the playback surface. The overlay never owns AVPlayer.
     resolveMainWindow()?.orderOut(nil)
     refreshPlaybackOverlay(forcePresent: true)
-    updateMainWindowInteraction()
   }
   @discardableResult
   private func resumePreparedPlaybackIfPossible() -> Bool {
@@ -853,10 +850,6 @@ final class AppModel: ObservableObject {
     }
     resolveMainWindow()?.makeKeyAndOrderFront(nil)
     presentPendingPlaybackFailureIfPossible()
-  }
-  func updateMainWindowInteraction() {
-    // AppKit sheets own modality/focus. Playback UI is an independent floating
-    // nonactivating panel, mirroring Cuelixa's Linux overlay-first workflow.
   }
   func togglePlayPause() { player.togglePlayPause() }
 
@@ -912,7 +905,6 @@ final class AppModel: ObservableObject {
       db.setPosition(hash: t.contentHash, position: usefulResume)
     }
     completionTrack = nil
-    updateMainWindowInteraction()
     dialogSheets?.hideCompletion()
     if !resumePreparedPlaybackIfPossible() { showLibraryWindow() }
     refreshBrowsingState()
@@ -923,7 +915,6 @@ final class AppModel: ObservableObject {
     playAfterPreparationHash = nil
     completionTrack = nil
     dialogSheets?.hideCompletion()
-    updateMainWindowInteraction()
     db.resetPosition(hash: t.contentHash)
     resolveMainWindow()?.makeKeyAndOrderFront(nil)
     guard let fresh = db.track(hash: t.contentHash), !fresh.missing,
@@ -1092,7 +1083,6 @@ final class AppModel: ObservableObject {
     batchPreflightTask = nil
     scanFallbackTimer?.invalidate()
     scanFallbackTimer = nil
-    updateMainWindowInteraction()
     dialogSheets?.suspendActive()
     playAfterPreparationHash = nil
     pendingPlaybackFailure = nil

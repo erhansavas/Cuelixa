@@ -19,8 +19,6 @@ jobs:
     timeout-minutes: 20
     permissions:
       contents: read
-      id-token: write
-      attestations: write
     steps:
       - name: Checkout immutable release tag
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
@@ -31,6 +29,8 @@ jobs:
 
       - name: Resolve and verify release identity
         shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
         run: |
           set -euo pipefail
           version=$(sed -nE 's/.*MARKETING_VERSION = ([^;]+);.*/\1/p' CuelixaMac.xcodeproj/project.pbxproj | head -n 1)
@@ -38,15 +38,37 @@ jobs:
           test -n "$version"
           test -n "$build"
           tag="${{ github.event.release.tag_name }}"
+          dmg="Cuelixa-${version}-macOS-arm64.dmg"
           test "$tag" = "v$version"
-          test "${{ github.event.release.name }}" = "Cuelixa $version"
-          test "${{ github.event.release.prerelease }}" = true
-          test "${{ github.event.release.draft }}" = false
           test "$(git rev-parse HEAD)" = "$(git rev-parse "${tag}^{commit}")"
           ./Scripts/verify-source-manifest.sh
           grep -Fq 'MACOSX_DEPLOYMENT_TARGET = 27.0;' CuelixaMac.xcodeproj/project.pbxproj
-          printf 'VERSION=%s\nBUILD=%s\nTAG=%s\nDMG=Cuelixa-%s-macOS-arm64.dmg\n' \
-            "$version" "$build" "$tag" "$version" >> "$GITHUB_ENV"
+
+          release_json="$RUNNER_TEMP/release.json"
+          gh api "repos/$GITHUB_REPOSITORY/releases/tags/$tag" > "$release_json"
+          python3 - "$release_json" "$tag" "$version" "$dmg" <<'PY'
+          import json
+          from pathlib import Path
+          import sys
+
+          release = json.loads(Path(sys.argv[1]).read_text())
+          tag, version, dmg = sys.argv[2:5]
+          if release.get("tag_name") != tag:
+              raise SystemExit("release tag does not match the checked-out tag")
+          if release.get("name") != f"Cuelixa {version}":
+              raise SystemExit("release name does not match the project version")
+          if release.get("draft") is not False or release.get("prerelease") is not True:
+              raise SystemExit("0.7.2 must be a published pre-release")
+          if release.get("immutable") is not True:
+              raise SystemExit("release is not immutable")
+          actual = sorted(asset.get("name") for asset in release.get("assets", []))
+          expected = sorted([dmg, f"{dmg}.sha256"])
+          if actual != expected:
+              raise SystemExit(f"unexpected release assets: {actual!r}")
+          PY
+
+          printf 'VERSION=%s\nBUILD=%s\nTAG=%s\nDMG=%s\n' \
+            "$version" "$build" "$tag" "$dmg" >> "$GITHUB_ENV"
 
       - name: Verify published release notes
         shell: bash
@@ -119,21 +141,3 @@ jobs:
           diskutil eject "$mount_point"
           trap - EXIT
           rm -rf "$work_root"
-
-      - name: Attest verified release assets
-        uses: actions/attest@1e69f48acb82d1966a394da916b4c1698aa569d6 # v4.2.2
-        with:
-          subject-path: |
-            dist/${{ env.DMG }}
-            dist/${{ env.DMG }}.sha256
-          create-storage-record: false
-
-      - name: Preserve verified release assets
-        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
-        with:
-          name: Cuelixa-${{ env.VERSION }}-macOS-arm64-verified
-          path: |
-            dist/${{ env.DMG }}
-            dist/${{ env.DMG }}.sha256
-          if-no-files-found: error
-          retention-days: 30
