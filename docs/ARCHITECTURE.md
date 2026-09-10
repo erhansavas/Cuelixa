@@ -115,6 +115,6 @@ Cuelixa does not require Full Disk Access, Accessibility, Input Monitoring, disa
 
 ## Distribution model
 
-Cuelixa 0.7.1 targets **Apple silicon (`arm64`) and macOS 27.0 or later**. During the 0.7.1 qualification window, macOS 27 and Xcode 27 are still beta software, so the GitHub release is a pre-release.
+Cuelixa 0.7.2 targets **Apple silicon (`arm64`) and macOS 27.0 or later**. macOS 27 and Xcode 27 are in Release Candidate phase during the 0.7.2 release cycle, so the GitHub distribution remains a pre-release.
 
 The free GitHub build enables Hardened Runtime and is ad-hoc signed when no Developer ID identity is available. Ad-hoc signing is not developer authentication and the build is not claimed to be notarized. The supported first-launch path is macOS **Privacy & Security → Open Anyway**; security protections are not disabled as an installation workaround.
