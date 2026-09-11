@@ -1,4 +1,4 @@
-# Cuelixa 0.7.2 release procedure
+# Cuelixa 0.7.3 release procedure
 
 This is the source of truth for preparing, qualifying, packaging, and publishing the GitHub release.
 
@@ -6,16 +6,16 @@ Cuelixa's public build is distributed without a paid Apple Developer ID identity
 
 ## Release identity
 
-- Marketing version: `0.7.2`
-- Build: `55`
-- Tag: `v0.7.2`
+- Marketing version: `0.7.3`
+- Build: `56`
+- Tag: `v0.7.3`
 - Application identifier: `io.github.erhansavas.Cuelixa`
 - Architecture: `arm64`
 - Minimum system: macOS `27.0`
-- DMG: `Cuelixa-0.7.2-macOS-arm64.dmg`
-- Checksum: `Cuelixa-0.7.2-macOS-arm64.dmg.sha256`
+- DMG: `Cuelixa-0.7.3-macOS-arm64.dmg`
+- Checksum: `Cuelixa-0.7.3-macOS-arm64.dmg.sha256`
 
-Cuelixa 0.7.2 was qualified while macOS 27 and Xcode 27 were in Release Candidate phase, so it is published as a GitHub **Pre-release**.
+Cuelixa 0.7.3 was qualified while macOS 27 and Xcode 27 were in Release Candidate phase, so it is published as a GitHub **Pre-release**.
 
 ## Release gates
 
@@ -34,16 +34,16 @@ Any source or documentation change after full macOS 27 qualification creates a n
 
 ## Packaging and publication
 
-GitHub's hosted `xcode-27` image can lag the qualification toolchain, so the 0.7.2 DMG is built only on the exact RC qualification environment. After the immutable candidate has passed both release gates:
+GitHub's hosted `xcode-27` image can lag the qualification toolchain, so the 0.7.3 DMG is built only on the exact RC qualification environment. After the immutable candidate has passed both release gates:
 
 1. Check out the exact qualified candidate in an isolated worktree and verify `SOURCE-SHA256SUMS.txt`.
 2. Re-run the complete validator on macOS 27 RC build `26A428` with `/Applications/Xcode.app` reporting Xcode 27.0 build `27A266a`.
-3. Build the Release app from that exact tree, verify version `0.7.2`, build `55`, identifier `io.github.erhansavas.Cuelixa`, minimum macOS `27.0`, and `arm64` architecture.
+3. Build the Release app from that exact tree, verify version `0.7.3`, build `56`, identifier `io.github.erhansavas.Cuelixa`, minimum macOS `27.0`, and `arm64` architecture.
 4. Apply an ad-hoc signature with Hardened Runtime, verify it strictly, and require that `get-task-allow` is absent.
 5. Create a read-only DMG containing `Cuelixa.app` and an Applications symlink; verify and remount it, then repeat bundle/architecture/signature checks from the mounted image.
-6. Generate `Cuelixa-0.7.2-macOS-arm64.dmg.sha256` only after the DMG is frozen and verify the checksum.
-7. Extract only `## Cuelixa 0.7.2 (build 55)` from `CHANGELOG.md` for the release notes.
-8. After the protected PR is merged, prove the merged `main` tree equals the qualified candidate tree and create `v0.7.2` at that merged commit.
+6. Generate `Cuelixa-0.7.3-macOS-arm64.dmg.sha256` only after the DMG is frozen and verify the checksum.
+7. Extract only `## Cuelixa 0.7.3 (build 56)` from `CHANGELOG.md` for the release notes.
+8. After the protected PR is merged, prove the merged `main` tree equals the qualified candidate tree and create `v0.7.3` at that merged commit.
 9. Create the GitHub release as a draft, attach exactly the frozen DMG and checksum, then publish that draft as a **Pre-release**. Immutable releases must be enabled before publication.
 
 Publishing the immutable release locks the tag and attached release assets and causes GitHub to generate a release attestation that binds the release tag, commit SHA, and assets. That release attestation is **not** presented as build provenance for the locally built DMG.

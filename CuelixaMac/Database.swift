@@ -32,6 +32,22 @@ final class LibraryDatabase: @unchecked Sendable {
   private var connection: OpaquePointer?
   private(set) var initializationError: String?
 
+  private static let upsertTrackSQL = """
+    INSERT INTO tracks(content_hash,title,duration,added_at,last_seen_at,missing)
+    VALUES(?,?,?,?,?,0)
+    ON CONFLICT(content_hash) DO UPDATE SET title = excluded.title,
+      duration = CASE WHEN excluded.duration>0 THEN excluded.duration ELSE tracks.duration END,
+      last_seen_at = excluded.last_seen_at, missing = 0
+    """
+
+  private static let upsertFileSQL = """
+    INSERT INTO files(path,content_hash,size,mtime_ns,ctime_ns,last_seen_at)
+    VALUES(?,?,?,?,?,?)
+    ON CONFLICT(path) DO UPDATE SET content_hash = excluded.content_hash,
+      size = excluded.size,mtime_ns = excluded.mtime_ns,
+      ctime_ns = excluded.ctime_ns,last_seen_at = excluded.last_seen_at
+    """
+
   init(url: URL = AppPaths.current.database) {
     let directory = url.deletingLastPathComponent()
     let canonicalDirectory: URL
@@ -244,24 +260,8 @@ final class LibraryDatabase: @unchecked Sendable {
           sqlite3_finalize(deleteStatement)
         }
         guard
-          sqlite3_prepare_v2(
-            db,
-            """
-            INSERT INTO tracks(content_hash,title,duration,added_at,last_seen_at,missing)
-            VALUES(?,?,?,?,?,0)
-            ON CONFLICT(content_hash) DO UPDATE SET title = excluded.title,
-              duration = CASE WHEN excluded.duration>0 THEN excluded.duration ELSE tracks.duration END,
-              last_seen_at = excluded.last_seen_at, missing = 0
-            """, -1, &trackStatement, nil) == SQLITE_OK,
-          sqlite3_prepare_v2(
-            db,
-            """
-            INSERT INTO files(path,content_hash,size,mtime_ns,ctime_ns,last_seen_at)
-            VALUES(?,?,?,?,?,?)
-            ON CONFLICT(path) DO UPDATE SET content_hash = excluded.content_hash,
-              size = excluded.size,mtime_ns = excluded.mtime_ns,
-              ctime_ns = excluded.ctime_ns,last_seen_at = excluded.last_seen_at
-            """, -1, &fileStatement, nil) == SQLITE_OK
+          sqlite3_prepare_v2(db, Self.upsertTrackSQL, -1, &trackStatement, nil) == SQLITE_OK,
+          sqlite3_prepare_v2(db, Self.upsertFileSQL, -1, &fileStatement, nil) == SQLITE_OK
         else { return false }
 
         for (index, record) in records.enumerated() {
@@ -339,14 +339,7 @@ final class LibraryDatabase: @unchecked Sendable {
         }
         var st: OpaquePointer?
         guard
-          sqlite3_prepare_v2(
-            db,
-            """
-            INSERT INTO tracks(content_hash,title,duration,added_at,last_seen_at,missing) VALUES(?,?,?,?,?,0)
-            ON CONFLICT(content_hash) DO UPDATE SET title = excluded.title,
-              duration = CASE WHEN excluded.duration>0 THEN excluded.duration ELSE tracks.duration END,
-              last_seen_at = excluded.last_seen_at, missing = 0
-            """, -1, &st, nil) == SQLITE_OK
+          sqlite3_prepare_v2(db, Self.upsertTrackSQL, -1, &st, nil) == SQLITE_OK
         else { return false }
         sqlite3_bind_text(st, 1, hash, -1, sqliteTransientDestructor())
         sqlite3_bind_text(st, 2, title, -1, sqliteTransientDestructor())
@@ -360,13 +353,7 @@ final class LibraryDatabase: @unchecked Sendable {
         sqlite3_finalize(st)
         st = nil
         guard
-          sqlite3_prepare_v2(
-            db,
-            """
-            INSERT INTO files(path,content_hash,size,mtime_ns,ctime_ns,last_seen_at) VALUES(?,?,?,?,?,?)
-            ON CONFLICT(path) DO UPDATE SET content_hash = excluded.content_hash,size = excluded.size,
-              mtime_ns = excluded.mtime_ns,ctime_ns = excluded.ctime_ns,last_seen_at = excluded.last_seen_at
-            """, -1, &st, nil) == SQLITE_OK
+          sqlite3_prepare_v2(db, Self.upsertFileSQL, -1, &st, nil) == SQLITE_OK
         else { return false }
         sqlite3_bind_text(st, 1, path, -1, sqliteTransientDestructor())
         sqlite3_bind_text(st, 2, hash, -1, sqliteTransientDestructor())

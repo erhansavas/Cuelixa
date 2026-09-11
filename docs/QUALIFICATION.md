@@ -1,6 +1,6 @@
-# Qualification — Cuelixa 0.7.2 (build 55)
+# Qualification — Cuelixa 0.7.3 (build 56)
 
-Cuelixa 0.7.2 requires an Apple silicon Mac running macOS 27.0 or later. The release qualification target is macOS 27 Release Candidate (`26A428`), Xcode 27 Release Candidate (`27A266a`), and Swift 6.4.
+Cuelixa 0.7.3 requires an Apple silicon Mac running macOS 27.0 or later. The release qualification target is macOS 27 Release Candidate (`26A428`), Xcode 27 Release Candidate (`27A266a`), and Swift 6.4.
 
 This document defines what must be proven. It intentionally does not embed a mutable “latest successful run” claim that would require changing the source tree after the exact candidate SHA has been qualified. The PR/Actions/release evidence records the actual run result for that immutable candidate.
 
@@ -19,11 +19,11 @@ This document defines what must be proven. It intentionally does not embed a mut
 - Xcode Analyze;
 - deployment target, `arm64` architecture, bundle identifier, version/build, and Release-bundle checks.
 
-The final 0.7.2 candidate must pass the **complete** validator on an actual supported macOS 27 runtime. The complete output is release evidence and must correspond to the exact candidate SHA.
+The final 0.7.3 candidate must pass the **complete** validator on an actual supported macOS 27 runtime. The complete output is release evidence and must correspond to the exact candidate SHA.
 
 ## Regression focus
 
-The 0.7.2 suite retains the source-identity regression coverage added after 0.7 and adds native UI regressions for search-focus dismissal plus repeated standard sidebar hide/show cycles. Source-identity coverage includes regular in-library audio, safe internal symlinks, rejection of external/dangling/special scanner targets, deterministic canonical-target deduplication, import-through-external-symlink copying, and changed-source rehash/reconciliation behavior.
+The 0.7.3 suite retains the source-identity regression coverage added after 0.7 and adds native UI regressions for search-focus dismissal plus repeated standard sidebar hide/show cycles. Source-identity coverage includes regular in-library audio, safe internal symlinks, rejection of external/dangling/special scanner targets, deterministic canonical-target deduplication, import-through-external-symlink copying, and changed-source rehash/reconciliation behavior.
 
 The scanner performance fixture retains the legacy per-record database path as a test comparison so the one-transaction reconciliation path can be measured against its predecessor. That test capability is not evidence that the legacy path is used by the application scanner.
 
@@ -48,7 +48,7 @@ These are truthful qualification boundaries, not known defects unless a failing 
 
 ## Historical evidence
 
-Earlier engineering evidence is preserved under [Historical audits](audits/). It is not current architecture or proof of the 0.7.2 candidate.
+Earlier engineering evidence is preserved under [Historical audits](audits/). It is not current architecture or proof of the 0.7.3 candidate.
 
 ## Release package
 

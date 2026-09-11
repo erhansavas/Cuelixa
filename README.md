@@ -6,13 +6,13 @@
   <h1>Cuelixa</h1>
   <p><strong>Local-first listening practice for Apple silicon Macs.</strong></p>
   <p>Organize local lesson audio, resume where you left off, prepare subtitles on-device, and keep synchronized text in a compact floating player.</p>
-  <p><strong>Cuelixa 0.7.2 · Build 55</strong></p>
+  <p><strong>Cuelixa 0.7.3 · Build 56</strong></p>
 
   [![macOS CI](https://github.com/erhansavas/Cuelixa/actions/workflows/macos.yml/badge.svg)](https://github.com/erhansavas/Cuelixa/actions/workflows/macos.yml)
   [![License](https://img.shields.io/badge/license-Apache--2.0-blue.svg)](LICENSE)
 </div>
 
-> **Platform status:** Cuelixa 0.7.2 targets macOS 27.0 or later. This release was qualified while macOS 27 and Xcode 27 were in Release Candidate phase, so it is distributed as a GitHub **Pre-release**.
+> **Platform status:** Cuelixa 0.7.3 targets macOS 27.0 or later. This release was qualified while macOS 27 and Xcode 27 were in Release Candidate phase, so it is distributed as a GitHub **Pre-release**.
 
 ## What Cuelixa does
 
@@ -66,11 +66,11 @@ See [Architecture](docs/ARCHITECTURE.md) for subsystem ownership, data flows, co
 - macOS 27.0 or later
 - Full Xcode 27 to build from source
 
-Cuelixa 0.7.2 qualification targets macOS 27 Release Candidate (`26A428`) with Xcode 27 Release Candidate (`27A266a`) and Swift 6.4. Permanent GitHub CI also runs the complete validator on GitHub's available arm64 macOS 27 `xcode-27` image and records the exact hosted OS/Xcode builds. Because hosted images can lag the qualification toolchain, release qualification separately requires the exact candidate to pass on the maintainer's RC environment before it is tagged.
+Cuelixa 0.7.3 qualification targets macOS 27 Release Candidate (`26A428`) with Xcode 27 Release Candidate (`27A266a`) and Swift 6.4. Permanent GitHub CI also runs the complete validator on GitHub's available arm64 macOS 27 `xcode-27` image and records the exact hosted OS/Xcode builds. Because hosted images can lag the qualification toolchain, release qualification separately requires the exact candidate to pass on the maintainer's RC environment before it is tagged.
 
 ## Install
 
-Release packages are distributed through [GitHub Releases](https://github.com/erhansavas/Cuelixa/releases). For 0.7.2, the release assets are `Cuelixa-0.7.2-macOS-arm64.dmg` and `Cuelixa-0.7.2-macOS-arm64.dmg.sha256`.
+Release packages are distributed through [GitHub Releases](https://github.com/erhansavas/Cuelixa/releases). For 0.7.3, the release assets are `Cuelixa-0.7.3-macOS-arm64.dmg` and `Cuelixa-0.7.3-macOS-arm64.dmg.sha256`.
 
 1. Open the DMG.
 2. Drag **Cuelixa** to **Applications**.
@@ -117,7 +117,7 @@ See [Privacy](docs/PRIVACY.md), [Security](SECURITY.md), [Architecture](docs/ARC
 
 ## Release integrity
 
-For 0.7.2, the release DMG is built from the exact qualified tree on macOS 27 Release Candidate (`26A428`) with Xcode 27 Release Candidate (`27A266a`). The package is ad-hoc signed with Hardened Runtime, remounted for verification, and frozen with SHA-256 before publication.
+For 0.7.3, the release DMG is built from the exact qualified tree on macOS 27 Release Candidate (`26A428`) with Xcode 27 Release Candidate (`27A266a`). The package is ad-hoc signed with Hardened Runtime, remounted for verification, and frozen with SHA-256 before publication.
 
 The GitHub release is published with immutable releases enabled. GitHub's release attestation binds the release tag, commit SHA, and published assets; it is distinct from build provenance for the locally built DMG. A read-only post-publication workflow independently checks the immutable release metadata, exact asset set, source manifest, release notes, checksum, packaged metadata, architecture, and signature.
 
