@@ -442,7 +442,7 @@ final class PlaybackController: ObservableObject {
     playbackStartWatchdogTask?.cancel()
     playbackStartWatchdogTask = nil
     removeStartProgressObserver()
-    installPeriodicObserver(on: player)
+    installPeriodicObserver(on: player, generation: generation)
     installRemoteCommands()
     setState(.playing)
     let current = finiteTime(player.currentTime().seconds, fallback: position)
@@ -457,15 +457,20 @@ final class PlaybackController: ObservableObject {
     onPlaybackStarted?()
   }
 
-  private func installPeriodicObserver(on player: AVPlayer) {
-    guard observer == nil else { return }
+  private func installPeriodicObserver(on player: AVPlayer, generation: UInt64) {
+    guard observer == nil, playbackGeneration == generation, self.player === player else { return }
     // 10 Hz is sufficient for a spoken-audio transport and subtitle overlay.
     // Exact user seeks remain event-driven; readiness is established first so a
-    // failed item never creates a recurring time observer.
+    // failed item never creates a recurring time observer. The callback carries
+    // both session identities because removeTimeObserver cannot cancel a MainActor
+    // task that an already-invoked observer callback has queued.
     let interval = CMTime(seconds: 0.1, preferredTimescale: 600)
     observer = player.addPeriodicTimeObserver(forInterval: interval, queue: .main) {
-      [weak self] time in
-      Task { @MainActor in self?.sample(CMTimeGetSeconds(time)) }
+      [weak self, weak player] time in
+      Task { @MainActor in
+        guard let self, let player else { return }
+        self.sample(CMTimeGetSeconds(time), generation: generation, player: player)
+      }
     }
   }
 
@@ -506,8 +511,9 @@ final class PlaybackController: ObservableObject {
     onPresentationChanged?()
   }
 
-  private func sample(_ value: Double) {
-    guard isRunning, value.isFinite else { return }
+  private func sample(_ value: Double, generation: UInt64, player observedPlayer: AVPlayer) {
+    guard playbackGeneration == generation, player === observedPlayer, isRunning, value.isFinite
+    else { return }
     if scrubbing {
       updateSubtitle(at: scrubValue)
       return
@@ -515,7 +521,7 @@ final class PlaybackController: ObservableObject {
     if seekTarget != nil {
       return
     }
-    if let actualDuration = player?.currentItem?.duration.seconds,
+    if let actualDuration = observedPlayer.currentItem?.duration.seconds,
       actualDuration.isFinite, actualDuration > 0,
       abs(actualDuration - duration) > 0.01
     {
