@@ -57,14 +57,18 @@ jobs:
               raise SystemExit("release tag does not match the checked-out tag")
           if release.get("name") != f"Cuelixa {version}":
               raise SystemExit("release name does not match the project version")
-          if release.get("draft") is not False or release.get("prerelease") is not True:
-              raise SystemExit("0.7.2 must be a published pre-release")
+          if release.get("draft") is not False:
+              raise SystemExit("release must be published before verification")
+          if not isinstance(release.get("prerelease"), bool):
+              raise SystemExit("release prerelease state is invalid")
           if release.get("immutable") is not True:
               raise SystemExit("release is not immutable")
           actual = sorted(asset.get("name") for asset in release.get("assets", []))
           expected = sorted([dmg, f"{dmg}.sha256"])
           if actual != expected:
               raise SystemExit(f"unexpected release assets: {actual!r}")
+          channel = "pre-release" if release["prerelease"] else "stable release"
+          print(f"verified published {channel}: {tag}")
           PY
 
           printf 'VERSION=%s\nBUILD=%s\nTAG=%s\nDMG=%s\n' \
