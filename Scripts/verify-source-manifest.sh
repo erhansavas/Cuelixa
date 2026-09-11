@@ -46,4 +46,46 @@ if ! cmp -s "$temp_root/manifest.sorted" "$temp_root/tracked.sorted"; then
 fi
 
 shasum -a 256 -c "$manifest"
+
+expected_build=$(sed -nE 's/.*CURRENT_PROJECT_VERSION = ([^;]+);.*/\1/p' CuelixaMac.xcodeproj/project.pbxproj | head -n 1)
+expected_version=$(sed -nE 's/.*MARKETING_VERSION = ([^;]+);.*/\1/p' CuelixaMac.xcodeproj/project.pbxproj | head -n 1)
+if [ -z "$expected_build" ] || [ -z "$expected_version" ]; then
+    echo "SOURCE CONTRACT ERROR: project version metadata missing" >&2
+    exit 1
+fi
+
+security_line=$(printf 'Security and integrity fixes target Cuelixa `%s` (build `%s`) on its supported macOS release line.' "$expected_version" "$expected_build")
+if ! grep -Fqx "$security_line" SECURITY.md; then
+    echo "SOURCE CONTRACT ERROR: SECURITY.md version/build drift" >&2
+    exit 1
+fi
+
+playback_source=CuelixaMac/PlaybackController.swift
+grep -Fq 'private func installPeriodicObserver(on player: AVPlayer, generation: UInt64)' "$playback_source" ||
+{
+    echo "SOURCE CONTRACT ERROR: generation-bound periodic observer missing" >&2
+    exit 1
+}
+grep -Fq 'guard observer == nil, playbackGeneration == generation, self.player === player else { return }' "$playback_source" ||
+{
+    echo "SOURCE CONTRACT ERROR: periodic observer stale-session guard missing" >&2
+    exit 1
+}
+grep -Fq 'self.sample(CMTimeGetSeconds(time), generation: generation, player: player)' "$playback_source" ||
+{
+    echo "SOURCE CONTRACT ERROR: periodic callback does not carry generation/player identity" >&2
+    exit 1
+}
+grep -Fq 'private func sample(_ value: Double, generation: UInt64, player observedPlayer: AVPlayer)' "$playback_source" ||
+{
+    echo "SOURCE CONTRACT ERROR: generation/player-aware sampler missing" >&2
+    exit 1
+}
+grep -Fq 'guard playbackGeneration == generation, player === observedPlayer, isRunning, value.isFinite' "$playback_source" ||
+{
+    echo "SOURCE CONTRACT ERROR: stale periodic samples are not rejected" >&2
+    exit 1
+}
+
 echo "SOURCE MANIFEST VERIFIED"
+echo "CURRENT SOURCE CONTRACTS VERIFIED"
