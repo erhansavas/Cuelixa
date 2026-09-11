@@ -1,6 +1,6 @@
 # Build and validation
 
-These instructions apply to Cuelixa 0.7.2 (build 55).
+These instructions apply to Cuelixa 0.7.3 (build 56).
 
 ## Requirements
 
@@ -8,7 +8,7 @@ These instructions apply to Cuelixa 0.7.2 (build 55).
 - macOS 27.0 or later
 - Full Xcode 27
 
-The 0.7.2 release qualification target is macOS 27 Release Candidate (`26A428`), Xcode 27 Release Candidate (`27A266a`), and Swift 6.4. The deployment target is macOS 27.0 and the shipping architecture is `arm64`.
+The 0.7.3 release qualification target is macOS 27 Release Candidate (`26A428`), Xcode 27 Release Candidate (`27A266a`), and Swift 6.4. The deployment target is macOS 27.0 and the shipping architecture is `arm64`.
 
 ## Xcode
 

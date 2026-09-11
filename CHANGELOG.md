@@ -1,5 +1,13 @@
 # Changelog
 
+## Cuelixa 0.7.3 (build 56)
+
+- Reject stale periodic AVPlayer samples after a track/session change by binding them to both the playback generation and the exact player instance.
+- Make immutable-release verification work for either pre-release or stable release channels instead of hard-coding the 0.7.2 pre-release state.
+- Keep the SQLite scanner and legacy/performance upsert path on one shared pair of prepared-statement definitions to prevent schema-update drift.
+
+Cuelixa 0.7.3 is a focused correctness and release-maintenance patch over 0.7.2. It remains a GitHub pre-release because macOS 27 general availability is scheduled for 14 September 2026.
+
 ## Cuelixa 0.7.2 (build 55)
 
 - Made Hide/Show Sidebar feel natural: opening or closing the sidebar no longer makes unrelated toolbar buttons jump.
