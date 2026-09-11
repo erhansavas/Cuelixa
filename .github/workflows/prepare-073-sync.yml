@@ -112,11 +112,11 @@ jobs:
 
           xcrun swift-format format --in-place CuelixaMac/Database.swift
 
-          rm -- .github/workflows/prepare-073-sync.yml
+          git rm -- .github/workflows/prepare-073-sync.yml .github/workflows/repair-prepare-073.yml
 
           tmp_manifest="$(mktemp)"
           git ls-files -z | while IFS= read -r -d '' path; do
-            if [[ "$path" == "SOURCE-SHA256SUMS.txt" || "$path" == ".github/workflows/prepare-073-sync.yml" ]]; then
+            if [[ "$path" == "SOURCE-SHA256SUMS.txt" ]]; then
               continue
             fi
             shasum -a 256 -- "$path"
@@ -138,6 +138,7 @@ jobs:
           test "$(grep -c 'Self.upsertTrackSQL' CuelixaMac/Database.swift)" = 2
           test "$(grep -c 'Self.upsertFileSQL' CuelixaMac/Database.swift)" = 2
           test ! -e .github/workflows/prepare-073-sync.yml
+          test ! -e .github/workflows/repair-prepare-073.yml
           ./Scripts/verify-source-manifest.sh
           ./Scripts/extract-release-notes.sh 0.7.3 56 "$RUNNER_TEMP/release-notes.md"
           test "$(head -n 1 "$RUNNER_TEMP/release-notes.md")" = '## Cuelixa 0.7.3 (build 56)'
