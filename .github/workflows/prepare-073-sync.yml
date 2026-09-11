@@ -1,0 +1,169 @@
+# SPDX-License-Identifier: Apache-2.0
+name: Prepare Cuelixa 0.7.3 synchronized candidate
+
+on:
+  push:
+    branches: [release/0.7.3-sync]
+
+permissions:
+  contents: write
+
+concurrency:
+  group: prepare-073-sync
+  cancel-in-progress: false
+
+jobs:
+  prepare:
+    runs-on: xcode-27
+    timeout-minutes: 30
+    env:
+      DEVELOPER_DIR: /Applications/Xcode.app/Contents/Developer
+    steps:
+      - name: Checkout release branch
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: release/0.7.3-sync
+          fetch-depth: 0
+
+      - name: Apply deterministic release-prep changes
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 <<'PY'
+          from pathlib import Path
+
+          def replace_count(path: str, old: str, new: str, count: int) -> None:
+              p = Path(path)
+              text = p.read_text()
+              actual = text.count(old)
+              if actual != count:
+                  raise SystemExit(f"{path}: expected {count} occurrences of {old!r}, found {actual}")
+              p.write_text(text.replace(old, new))
+
+          project = "CuelixaMac.xcodeproj/project.pbxproj"
+          replace_count(project, "CURRENT_PROJECT_VERSION = 55;", "CURRENT_PROJECT_VERSION = 56;", 2)
+          replace_count(project, "MARKETING_VERSION = 0.7.2;", "MARKETING_VERSION = 0.7.3;", 2)
+
+          for path in [
+              "README.md",
+              "SECURITY.md",
+              "docs/BUILD.md",
+              "docs/QUALIFICATION.md",
+              "docs/RELEASE.md",
+              ".github/ISSUE_TEMPLATE/bug_report.yml",
+          ]:
+              p = Path(path)
+              text = p.read_text()
+              if "0.7.2" not in text:
+                  raise SystemExit(f"{path}: expected current 0.7.2 reference")
+              text = text.replace("0.7.2", "0.7.3")
+              text = text.replace("build 55", "build 56").replace("Build 55", "Build 56")
+              p.write_text(text)
+
+          architecture = Path("docs/ARCHITECTURE.md")
+          text = architecture.read_text()
+          if text.count("0.7.2") < 2:
+              raise SystemExit("docs/ARCHITECTURE.md: expected current release references")
+          architecture.write_text(text.replace("0.7.2", "0.7.3"))
+
+          changelog = Path("CHANGELOG.md")
+          text = changelog.read_text()
+          marker = "# Changelog\n\n"
+          if not text.startswith(marker):
+              raise SystemExit("CHANGELOG.md: unexpected header")
+          if "## Cuelixa 0.7.3 (build 56)" in text:
+              raise SystemExit("CHANGELOG.md: 0.7.3 section already exists")
+          section = """## Cuelixa 0.7.3 (build 56)\n\n- Reject stale periodic AVPlayer samples after a track/session change by binding them to both the playback generation and the exact player instance.\n- Make immutable-release verification work for either pre-release or stable release channels instead of hard-coding the 0.7.2 pre-release state.\n- Keep the SQLite scanner and legacy/performance upsert path on one shared pair of prepared-statement definitions to prevent schema-update drift.\n\nCuelixa 0.7.3 is a focused correctness and release-maintenance patch over 0.7.2. It remains a GitHub pre-release because macOS 27 general availability is scheduled for 14 September 2026.\n\n"""
+          changelog.write_text(marker + section + text[len(marker):])
+
+          database = Path("CuelixaMac/Database.swift")
+          text = database.read_text()
+          anchor = "  private var connection: OpaquePointer?\n  private(set) var initializationError: String?\n"
+          if text.count(anchor) != 1:
+              raise SystemExit("Database.swift: insertion anchor mismatch")
+          constants = '''  private var connection: OpaquePointer?\n  private(set) var initializationError: String?\n\n  private static let upsertTrackSQL = """\n    INSERT INTO tracks(content_hash,title,duration,added_at,last_seen_at,missing)\n    VALUES(?,?,?,?,?,0)\n    ON CONFLICT(content_hash) DO UPDATE SET title = excluded.title,\n      duration = CASE WHEN excluded.duration>0 THEN excluded.duration ELSE tracks.duration END,\n      last_seen_at = excluded.last_seen_at, missing = 0\n    """\n\n  private static let upsertFileSQL = """\n    INSERT INTO files(path,content_hash,size,mtime_ns,ctime_ns,last_seen_at)\n    VALUES(?,?,?,?,?,?)\n    ON CONFLICT(path) DO UPDATE SET content_hash = excluded.content_hash,\n      size = excluded.size,mtime_ns = excluded.mtime_ns,\n      ctime_ns = excluded.ctime_ns,last_seen_at = excluded.last_seen_at\n    """\n'''
+          text = text.replace(anchor, constants)
+
+          track_scan = '''          sqlite3_prepare_v2(\n            db,\n            """\n            INSERT INTO tracks(content_hash,title,duration,added_at,last_seen_at,missing)\n            VALUES(?,?,?,?,?,0)\n            ON CONFLICT(content_hash) DO UPDATE SET title = excluded.title,\n              duration = CASE WHEN excluded.duration>0 THEN excluded.duration ELSE tracks.duration END,\n              last_seen_at = excluded.last_seen_at, missing = 0\n            """, -1, &trackStatement, nil) == SQLITE_OK,'''
+          track_scan_new = '''          sqlite3_prepare_v2(db, Self.upsertTrackSQL, -1, &trackStatement, nil) == SQLITE_OK,'''
+          if text.count(track_scan) != 1:
+              raise SystemExit("Database.swift: scanner track UPSERT mismatch")
+          text = text.replace(track_scan, track_scan_new)
+
+          file_scan = '''          sqlite3_prepare_v2(\n            db,\n            """\n            INSERT INTO files(path,content_hash,size,mtime_ns,ctime_ns,last_seen_at)\n            VALUES(?,?,?,?,?,?)\n            ON CONFLICT(path) DO UPDATE SET content_hash = excluded.content_hash,\n              size = excluded.size,mtime_ns = excluded.mtime_ns,\n              ctime_ns = excluded.ctime_ns,last_seen_at = excluded.last_seen_at\n            """, -1, &fileStatement, nil) == SQLITE_OK'''
+          file_scan_new = '''          sqlite3_prepare_v2(db, Self.upsertFileSQL, -1, &fileStatement, nil) == SQLITE_OK'''
+          if text.count(file_scan) != 1:
+              raise SystemExit("Database.swift: scanner file UPSERT mismatch")
+          text = text.replace(file_scan, file_scan_new)
+
+          track_legacy = '''          sqlite3_prepare_v2(\n            db,\n            """\n            INSERT INTO tracks(content_hash,title,duration,added_at,last_seen_at,missing) VALUES(?,?,?,?,?,0)\n            ON CONFLICT(content_hash) DO UPDATE SET title = excluded.title,\n              duration = CASE WHEN excluded.duration>0 THEN excluded.duration ELSE tracks.duration END,\n              last_seen_at = excluded.last_seen_at, missing = 0\n            """, -1, &st, nil) == SQLITE_OK'''
+          track_legacy_new = '''          sqlite3_prepare_v2(db, Self.upsertTrackSQL, -1, &st, nil) == SQLITE_OK'''
+          if text.count(track_legacy) != 1:
+              raise SystemExit("Database.swift: legacy track UPSERT mismatch")
+          text = text.replace(track_legacy, track_legacy_new)
+
+          file_legacy = '''          sqlite3_prepare_v2(\n            db,\n            """\n            INSERT INTO files(path,content_hash,size,mtime_ns,ctime_ns,last_seen_at) VALUES(?,?,?,?,?,?)\n            ON CONFLICT(path) DO UPDATE SET content_hash = excluded.content_hash,size = excluded.size,\n              mtime_ns = excluded.mtime_ns,ctime_ns = excluded.ctime_ns,last_seen_at = excluded.last_seen_at\n            """, -1, &st, nil) == SQLITE_OK'''
+          file_legacy_new = '''          sqlite3_prepare_v2(db, Self.upsertFileSQL, -1, &st, nil) == SQLITE_OK'''
+          if text.count(file_legacy) != 1:
+              raise SystemExit("Database.swift: legacy file UPSERT mismatch")
+          text = text.replace(file_legacy, file_legacy_new)
+          database.write_text(text)
+          PY
+
+          xcrun swift-format format --in-place CuelixaMac/Database.swift
+
+          rm -- .github/workflows/prepare-073-sync.yml
+
+          tmp_manifest="$(mktemp)"
+          git ls-files -z | while IFS= read -r -d '' path; do
+            if [[ "$path" == "SOURCE-SHA256SUMS.txt" || "$path" == ".github/workflows/prepare-073-sync.yml" ]]; then
+              continue
+            fi
+            shasum -a 256 -- "$path"
+          done > "$tmp_manifest"
+          LC_ALL=C sort -k2 "$tmp_manifest" > SOURCE-SHA256SUMS.txt
+          rm -f "$tmp_manifest"
+
+      - name: Verify synchronized candidate invariants
+        shell: bash
+        run: |
+          set -euo pipefail
+          test "$(grep -o 'MARKETING_VERSION = 0.7.3;' CuelixaMac.xcodeproj/project.pbxproj | wc -l | tr -d ' ')" = 2
+          test "$(grep -o 'CURRENT_PROJECT_VERSION = 56;' CuelixaMac.xcodeproj/project.pbxproj | wc -l | tr -d ' ')" = 2
+          test "$(grep -c '^## Cuelixa 0.7.3 (build 56)$' CHANGELOG.md)" = 1
+          ! grep -Fq '0.7.2 must be a published pre-release' .github/workflows/release-dmg.yml
+          ! grep -Fq 'release.get("prerelease") is not True' .github/workflows/release-dmg.yml
+          test "$(grep -c 'private static let upsertTrackSQL' CuelixaMac/Database.swift)" = 1
+          test "$(grep -c 'private static let upsertFileSQL' CuelixaMac/Database.swift)" = 1
+          test "$(grep -c 'Self.upsertTrackSQL' CuelixaMac/Database.swift)" = 2
+          test "$(grep -c 'Self.upsertFileSQL' CuelixaMac/Database.swift)" = 2
+          test ! -e .github/workflows/prepare-073-sync.yml
+          ./Scripts/verify-source-manifest.sh
+          ./Scripts/extract-release-notes.sh 0.7.3 56 "$RUNNER_TEMP/release-notes.md"
+          test "$(head -n 1 "$RUNNER_TEMP/release-notes.md")" = '## Cuelixa 0.7.3 (build 56)'
+
+      - name: Run complete validator before committing
+        shell: bash
+        run: |
+          set -euo pipefail
+          test "$(uname -m)" = arm64
+          test "$(sw_vers -productVersion)" = 27.0
+          test "$(xcodebuild -version | sed -n '1s/^Xcode //p')" = 27.0
+          xcrun swiftc --version | head -n 1 | grep -Fq 'Swift version 6.4'
+          host_macos_build="$(sw_vers -buildVersion)"
+          host_xcode_build="$(xcodebuild -version | sed -n '2s/^Build version //p')"
+          CUELIXA_MACOS_BUILD="$host_macos_build" \
+          CUELIXA_XCODE_BUILD="$host_xcode_build" \
+          ./VALIDATE-MAC.sh
+
+      - name: Commit exact validated tree
+        shell: bash
+        run: |
+          set -euo pipefail
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add -A
+          git diff --cached --check
+          git diff --cached --quiet && { echo 'No candidate changes to commit'; exit 1; }
+          git commit -m 'Prepare synchronized Cuelixa 0.7.3 candidate'
+          git push origin HEAD:release/0.7.3-sync
