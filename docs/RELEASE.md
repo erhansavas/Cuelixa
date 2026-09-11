@@ -7,7 +7,7 @@ Cuelixa's public build is distributed without a paid Apple Developer ID identity
 ## Release identity
 
 - Marketing version: `0.7.3`
-- Build: `55`
+- Build: `56`
 - Tag: `v0.7.3`
 - Application identifier: `io.github.erhansavas.Cuelixa`
 - Architecture: `arm64`
@@ -38,7 +38,7 @@ GitHub's hosted `xcode-27` image can lag the qualification toolchain, so the 0.7
 
 1. Check out the exact qualified candidate in an isolated worktree and verify `SOURCE-SHA256SUMS.txt`.
 2. Re-run the complete validator on macOS 27 RC build `26A428` with `/Applications/Xcode.app` reporting Xcode 27.0 build `27A266a`.
-3. Build the Release app from that exact tree, verify version `0.7.3`, build `55`, identifier `io.github.erhansavas.Cuelixa`, minimum macOS `27.0`, and `arm64` architecture.
+3. Build the Release app from that exact tree, verify version `0.7.3`, build `56`, identifier `io.github.erhansavas.Cuelixa`, minimum macOS `27.0`, and `arm64` architecture.
 4. Apply an ad-hoc signature with Hardened Runtime, verify it strictly, and require that `get-task-allow` is absent.
 5. Create a read-only DMG containing `Cuelixa.app` and an Applications symlink; verify and remount it, then repeat bundle/architecture/signature checks from the mounted image.
 6. Generate `Cuelixa-0.7.3-macOS-arm64.dmg.sha256` only after the DMG is frozen and verify the checksum.
