@@ -2,7 +2,7 @@
 
 ## Supported version
 
-Security and integrity fixes target Cuelixa `0.7.3` (build `55`) on its supported macOS release line.
+Security and integrity fixes target Cuelixa `0.7.3` (build `56`) on its supported macOS release line.
 
 ## Reporting a vulnerability
 
